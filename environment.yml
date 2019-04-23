@@ -1,0 +1,5 @@
+name: fuzzy-k-mer-seq-aligner
+channels:
+  - defaults
+dependencies:
+  - scipy

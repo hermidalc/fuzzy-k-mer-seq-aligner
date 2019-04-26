@@ -1,5 +1,7 @@
 name: fuzzy-k-mer-seq-aligner
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - scipy
+  - numpy
+  - python-levenshtein

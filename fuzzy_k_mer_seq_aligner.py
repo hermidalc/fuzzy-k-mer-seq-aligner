@@ -68,7 +68,7 @@ parser.add_argument('--sim-cutoff', '-sc',
                     help='fuzzy membership similarity cutoff')
 parser.add_argument('--sw-sub-matrix', '-sws',
                     type=str, default='NUCLEOTIDE.txt',
-                    help='Smith-Waterman substitution matrix')
+                    help='Smith-Waterman substitution matrix file')
 parser.add_argument('--sw-gap-penalty', '-swg',
                     type=int, default='1',
                     help='Smith-Waterman gap penalty')
@@ -83,7 +83,7 @@ sim_alg_kwargs = {
     'sm_file': args.sw_sub_matrix,
 }
 
-# parse FASTA sequence files to strings
+# parse sequence files to strings
 query_seq_rec = SeqIO.read(args.query_seq, 'fasta')
 ref_seq_rec = SeqIO.read(args.ref_seq, 'fasta')
 
@@ -94,8 +94,8 @@ seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
 seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
 for i in range(len(ref_seq_rec) - k + 1):
     ref_k_mer_rec = ref_seq_rec[i:(i + k)]
-    ref_k_mer_exact = ''.join([ref_k_mer_rec[i] for i in seed_exact_idxs])
-    ref_k_mer_fuzzy = ''.join([ref_k_mer_rec[i] for i in seed_fuzzy_idxs])
+    ref_k_mer_exact = ''.join([ref_k_mer_rec[x] for x in seed_exact_idxs])
+    ref_k_mer_fuzzy = ''.join([ref_k_mer_rec[x] for x in seed_fuzzy_idxs])
     if ref_k_mer_exact not in fuzzy_map:
         fuzzy_map[ref_k_mer_exact] = {ref_k_mer_fuzzy: [i]}
     elif ref_k_mer_fuzzy not in fuzzy_map[ref_k_mer_exact]:
@@ -104,33 +104,37 @@ for i in range(len(ref_seq_rec) - k + 1):
         fuzzy_map[ref_k_mer_exact][ref_k_mer_fuzzy].append(i)
 
 # align query sequence k-mers to ref sequence
-k_mer_align_pos = {}
-for i in range(len(query_seq_rec) - k + 1):
-    query_k_mer_rec = query_seq_rec[i:(i + k)]
-    query_k_mer_exact = ''.join([query_k_mer_rec[i] for i in seed_exact_idxs])
-    query_k_mer_fuzzy = ''.join([query_k_mer_rec[i] for i in seed_fuzzy_idxs])
+k_mer_alignments = {}
+for j in range(len(query_seq_rec) - k + 1):
+    query_k_mer_rec = query_seq_rec[j:(j + k)]
+    query_k_mer_exact = ''.join([query_k_mer_rec[x] for x in seed_exact_idxs])
+    query_k_mer_fuzzy = ''.join([query_k_mer_rec[x] for x in seed_fuzzy_idxs])
+    query_k_mer = str(query_k_mer_rec.seq)
     if query_k_mer_exact in fuzzy_map:
         for ref_k_mer_fuzzy in fuzzy_map[query_k_mer_exact]:
             if (similarity_score(query_k_mer_fuzzy, ref_k_mer_fuzzy,
                                  args.sim_alg, **sim_alg_kwargs) >=
                     args.sim_cutoff):
-                query_k_mer = str(query_k_mer_rec.seq)
-                if query_k_mer in k_mer_align_pos:
-                    k_mer_align_pos[query_k_mer].append(i)
+                ref_k_mer_pos = fuzzy_map[query_k_mer_exact][ref_k_mer_fuzzy]
+                if query_k_mer in k_mer_alignments:
+                    k_mer_alignments[query_k_mer][0].extend(ref_k_mer_pos)
                 else:
-                    k_mer_align_pos[query_k_mer] = [i]
+                    k_mer_alignments[query_k_mer] = (ref_k_mer_pos, [])
     query_k_mer_rc_rec = query_k_mer_rec.reverse_complement()
-    query_k_mer_rc_exact = ''.join(
-        [query_k_mer_rc_rec[i] for i in seed_exact_idxs])
-    query_k_mer_rc_fuzzy = ''.join(
-        [query_k_mer_rc_rec[i] for i in seed_fuzzy_idxs])
+    query_k_mer_rc_exact = ''.join([query_k_mer_rc_rec[x]
+                                    for x in seed_exact_idxs])
+    query_k_mer_rc_fuzzy = ''.join([query_k_mer_rc_rec[x]
+                                    for x in seed_fuzzy_idxs])
+    query_k_mer_rc = str(query_k_mer_rc_rec.seq)
     if query_k_mer_rc_exact in fuzzy_map:
         for ref_k_mer_fuzzy in fuzzy_map[query_k_mer_rc_exact]:
-            if (similarity_score(query_k_mer_fuzzy, ref_k_mer_fuzzy,
+            if (similarity_score(query_k_mer_rc_fuzzy, ref_k_mer_fuzzy,
                                  args.sim_alg, **sim_alg_kwargs) >=
                     args.sim_cutoff):
-                query_k_mer_rc = str(query_k_mer_rc_rec.seq)
-                if query_k_mer_rc in k_mer_align_pos:
-                    k_mer_align_pos[query_k_mer_rc].append(i)
+                ref_k_mer_rc_pos = (
+                    fuzzy_map[query_k_mer_rc_exact][ref_k_mer_fuzzy])
+                if query_k_mer_rc in k_mer_alignments:
+                    k_mer_alignments[query_k_mer_rc][1].extend(
+                        ref_k_mer_rc_pos)
                 else:
-                    k_mer_align_pos[query_k_mer_rc] = [i]
+                    k_mer_alignments[query_k_mer_rc] = ([], ref_k_mer_rc_pos)

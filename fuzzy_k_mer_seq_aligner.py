@@ -1,19 +1,11 @@
 #!/usr/bin/env python
 
-from argparse import ArgumentParser
-from os import path
-from Levenshtein import distance, hamming
 import numpy as np
+from Bio import SeqIO
+from argparse import ArgumentParser
+from Levenshtein import distance, hamming
+from os import path
 from pprint import pprint
-
-def read_fasta(file):
-    seq_fh = open(file)
-    seq_fh.readline()
-    seq = ''
-    for line in seq_fh.readlines():
-        seq += line.strip()
-    seq_fh.close()
-    return seq
 
 
 def smith_waterman_score(m, n, sigma, sm_file):
@@ -75,7 +67,7 @@ parser.add_argument('--sim-cutoff', '-sc',
                     type=float, default='0.7',
                     help='fuzzy membership similarity cutoff')
 parser.add_argument('--sw-sub-matrix', '-sws',
-                    type=str, default='DNA.txt',
+                    type=str, default='NUCLEOTIDE.txt',
                     help='Smith-Waterman substitution matrix')
 parser.add_argument('--sw-gap-penalty', '-swg',
                     type=int, default='1',
@@ -85,44 +77,60 @@ args = parser.parse_args()
 for file in (args.query_seq, args.ref_seq, args.sw_sub_matrix):
     if not path.isfile(file):
         parser.error("File %s doesn't exist" % file)
+
 sim_alg_kwargs = {
     'sigma': args.sw_gap_penalty,
     'sm_file': args.sw_sub_matrix,
 }
 
 # parse FASTA sequence files to strings
-query_seq = read_fasta(args.query_seq)
-ref_seq = read_fasta(args.ref_seq)
+query_seq_rec = SeqIO.read(args.query_seq, 'fasta')
+ref_seq_rec = SeqIO.read(args.ref_seq, 'fasta')
 
 # load ref sequence into fuzzy hashmap
 fuzzy_map = {}
 k = len(args.fuzzy_seed)
 seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
 seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
-for i in range(len(ref_seq) - k + 1):
-    k_mer = ref_seq[i:(i + k)]
-    k_mer_exact = ''.join([k_mer[i] for i in seed_exact_idxs])
-    k_mer_fuzzy = ''.join([k_mer[i] for i in seed_fuzzy_idxs])
-    if k_mer_exact not in fuzzy_map:
-        fuzzy_map[k_mer_exact] = {k_mer_fuzzy: [i]}
-    elif k_mer_fuzzy not in fuzzy_map[k_mer_exact]:
-        fuzzy_map[k_mer_exact][k_mer_fuzzy] = [i]
+for i in range(len(ref_seq_rec) - k + 1):
+    ref_k_mer_rec = ref_seq_rec[i:(i + k)]
+    ref_k_mer_exact = ''.join([ref_k_mer_rec[i] for i in seed_exact_idxs])
+    ref_k_mer_fuzzy = ''.join([ref_k_mer_rec[i] for i in seed_fuzzy_idxs])
+    if ref_k_mer_exact not in fuzzy_map:
+        fuzzy_map[ref_k_mer_exact] = {ref_k_mer_fuzzy: [i]}
+    elif ref_k_mer_fuzzy not in fuzzy_map[ref_k_mer_exact]:
+        fuzzy_map[ref_k_mer_exact][ref_k_mer_fuzzy] = [i]
     else:
-        fuzzy_map[k_mer_exact][k_mer_fuzzy].append(i)
-
-pprint(fuzzy_map)
+        fuzzy_map[ref_k_mer_exact][ref_k_mer_fuzzy].append(i)
 
 # align query sequence k-mers to ref sequence
-seq_align_pos = {}
-for i in range(len(query_seq) - k + 1):
-    q_k_mer = query_seq[i:(i + k)]
-    q_k_mer_exact = ''.join([k_mer[i] for i in seed_exact_idxs])
-    q_k_mer_fuzzy = ''.join([k_mer[i] for i in seed_fuzzy_idxs])
-    if q_k_mer_exact in fuzzy_map:
-        for r_k_mer_fuzzy in fuzzy_map[q_k_mer_exact]:
-            if similarity_score(q_k_mer_fuzzy, r_k_mer_fuzzy, args.sim_alg,
-                                **sim_alg_kwargs) >= args.sim_cutoff:
-                if q_k_mer in seq_align_pos:
-                    seq_align_pos[q_k_mer].append(i)
+k_mer_align_pos = {}
+for i in range(len(query_seq_rec) - k + 1):
+    query_k_mer_rec = query_seq_rec[i:(i + k)]
+    query_k_mer_exact = ''.join([query_k_mer_rec[i] for i in seed_exact_idxs])
+    query_k_mer_fuzzy = ''.join([query_k_mer_rec[i] for i in seed_fuzzy_idxs])
+    if query_k_mer_exact in fuzzy_map:
+        for ref_k_mer_fuzzy in fuzzy_map[query_k_mer_exact]:
+            if (similarity_score(query_k_mer_fuzzy, ref_k_mer_fuzzy,
+                                 args.sim_alg, **sim_alg_kwargs) >=
+                    args.sim_cutoff):
+                query_k_mer = str(query_k_mer_rec.seq)
+                if query_k_mer in k_mer_align_pos:
+                    k_mer_align_pos[query_k_mer].append(i)
                 else:
-                    seq_align_pos[q_k_mer] = []
+                    k_mer_align_pos[query_k_mer] = [i]
+    query_k_mer_rc_rec = query_k_mer_rec.reverse_complement()
+    query_k_mer_rc_exact = ''.join(
+        [query_k_mer_rc_rec[i] for i in seed_exact_idxs])
+    query_k_mer_rc_fuzzy = ''.join(
+        [query_k_mer_rc_rec[i] for i in seed_fuzzy_idxs])
+    if query_k_mer_rc_exact in fuzzy_map:
+        for ref_k_mer_fuzzy in fuzzy_map[query_k_mer_rc_exact]:
+            if (similarity_score(query_k_mer_fuzzy, ref_k_mer_fuzzy,
+                                 args.sim_alg, **sim_alg_kwargs) >=
+                    args.sim_cutoff):
+                query_k_mer_rc = str(query_k_mer_rc_rec.seq)
+                if query_k_mer_rc in k_mer_align_pos:
+                    k_mer_align_pos[query_k_mer_rc].append(i)
+                else:
+                    k_mer_align_pos[query_k_mer_rc] = [i]

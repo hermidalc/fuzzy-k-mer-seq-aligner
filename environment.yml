@@ -3,5 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - biopython
   - numpy
   - python-levenshtein

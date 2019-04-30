@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
-import numpy as np
-import pyximport
 from argparse import ArgumentParser
+import numpy as np
+from operator import itemgetter
+from os import path
+from pprint import pprint
+import pyximport
 from Bio import SeqIO
 from Bio.Alphabet.IUPAC import (ExtendedIUPACProtein, IUPACAmbiguousDNA,
                                 IUPACAmbiguousRNA)
 from Bio.Seq import Seq
 from Levenshtein import distance, hamming
-from os import path
-from pprint import pprint
 pyximport.install(language_level=3)
 from functions import build_fuzzy_map, iter_kmers
 
@@ -100,8 +101,8 @@ else:
     seq_alphabet = ExtendedIUPACProtein()
 
 sim_alg_kwargs = {}
+# Smith-Waterman setup
 if args.sim_alg == 'smith-waterman':
-    # Smith-Waterman setup
     sub_mat = substitution_matrix(args.sw_sub_matrix)
     sub_mat_first_chr = list(sub_mat.keys())[0]
     sim_alg_kwargs = {
@@ -139,7 +140,7 @@ for query_kmer_pos, query_kmer in iter_kmers(str(query_seq_rec.seq), k):
                 for target_kmer_pos in (
                         fuzzy_map[query_kmer_exact][target_kmer_fuzzy]):
                     query_kmer_align_pos['+'].append(
-                        (query_kmer_pos, target_kmer_pos))
+                        (target_kmer_pos, query_kmer_pos))
     if args.seq_type == 'dna':
         query_kmer_rc = str(Seq(query_kmer,
                                 alphabet=seq_alphabet).reverse_complement())
@@ -152,7 +153,10 @@ for query_kmer_pos, query_kmer in iter_kmers(str(query_seq_rec.seq), k):
                 if (similarity_score(
                         query_kmer_rc_fuzzy, target_kmer_fuzzy,
                         args.sim_alg, **sim_alg_kwargs) >= args.sim_cutoff):
-                    for target_kmer_rc_pos in (
+                    for target_kmer_pos in (
                             fuzzy_map[query_kmer_rc_exact][target_kmer_fuzzy]):
                         query_kmer_align_pos['-'].append(
-                            (query_kmer_pos, target_kmer_rc_pos))
+                            (target_kmer_pos, query_kmer_pos))
+for strand in query_kmer_align_pos:
+    # for large lists in-place sort better than sorted
+    query_kmer_align_pos[strand].sort(key=itemgetter(0, 1))

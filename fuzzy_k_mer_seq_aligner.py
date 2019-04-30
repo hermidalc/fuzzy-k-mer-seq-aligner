@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
 import numpy as np
-from Bio import SeqIO
+import pyximport
 from argparse import ArgumentParser
+from Bio import SeqIO
+from Bio.Alphabet.IUPAC import (ExtendedIUPACProtein, IUPACAmbiguousDNA,
+                                IUPACAmbiguousRNA)
+from Bio.Seq import Seq
 from Levenshtein import distance, hamming
 from os import path
 from pprint import pprint
+pyximport.install(language_level=3)
+from functions import build_fuzzy_map, iter_kmers
 
 
 def substitution_matrix(sm_file):
@@ -66,6 +72,9 @@ parser.add_argument('--target-seq', '-ts', type=str, required=True,
 parser.add_argument('--target-fmt', '-tf', type=str, default='fasta',
                     help='target sequence format (any Biopython SeqIO '
                          'supported format)')
+parser.add_argument('--seq-type', '-st', type=str, required=True,
+                    choices=['dna', 'rna', 'protein'],
+                    help='sequence type')
 parser.add_argument('--sim-alg', '-sa', type=str, default='levenshtein',
                     help='string similarity algorithm')
 parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.7',
@@ -83,6 +92,13 @@ for file in (args.query_seq, args.target_seq, args.sw_sub_matrix):
     if not path.isfile(file):
         parser.error("File %s doesn't exist" % file)
 
+if args.seq_type == 'dna':
+    seq_alphabet = IUPACAmbiguousDNA()
+elif args.seq_type == 'rna':
+    seq_alphabet = IUPACAmbiguousRNA()
+else:
+    seq_alphabet = ExtendedIUPACProtein()
+
 sim_alg_kwargs = {}
 if args.sim_alg == 'smith-waterman':
     # Smith-Waterman setup
@@ -95,63 +111,48 @@ if args.sim_alg == 'smith-waterman':
     }
 
 # parse sequence files to strings
-query_seq_rec = SeqIO.read(args.query_seq, args.query_fmt)
-target_seq_rec = SeqIO.read(args.target_seq, args.target_fmt)
+query_seq_rec = SeqIO.read(
+    args.query_seq, args.query_fmt, alphabet=seq_alphabet)
+target_seq_rec = SeqIO.read(
+    args.target_seq, args.target_fmt, alphabet=seq_alphabet)
 
 # load target sequence into fuzzy hashmap
-fuzzy_map = {}
 k = len(args.fuzzy_seed)
 seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
 seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
-for i in range(len(target_seq_rec) - k + 1):
-    target_k_mer_rec = target_seq_rec[i:(i + k)]
-    target_k_mer_exact = ''.join([target_k_mer_rec[x]
-                                  for x in seed_exact_idxs])
-    target_k_mer_fuzzy = ''.join([target_k_mer_rec[x]
-                                  for x in seed_fuzzy_idxs])
-    if target_k_mer_exact not in fuzzy_map:
-        fuzzy_map[target_k_mer_exact] = {target_k_mer_fuzzy: [i]}
-    elif target_k_mer_fuzzy not in fuzzy_map[target_k_mer_exact]:
-        fuzzy_map[target_k_mer_exact][target_k_mer_fuzzy] = [i]
-    else:
-        fuzzy_map[target_k_mer_exact][target_k_mer_fuzzy].append(i)
+fuzzy_map = build_fuzzy_map(str(target_seq_rec.seq), k,
+                            seed_exact_idxs, seed_fuzzy_idxs)
 
 # align query sequence k-mers to target sequence
-k_mer_alignments = {}
-for j in range(len(query_seq_rec) - k + 1):
-    query_k_mer_rec = query_seq_rec[j:(j + k)]
-    query_k_mer_exact = ''.join([query_k_mer_rec[x]
-                                 for x in seed_exact_idxs])
-    query_k_mer_fuzzy = ''.join([query_k_mer_rec[x]
-                                 for x in seed_fuzzy_idxs])
-    query_k_mer = str(query_k_mer_rec.seq)
-    if query_k_mer_exact in fuzzy_map:
-        for target_k_mer_fuzzy in fuzzy_map[query_k_mer_exact]:
-            if (similarity_score(query_k_mer_fuzzy, target_k_mer_fuzzy,
-                                 args.sim_alg, **sim_alg_kwargs) >=
-                    args.sim_cutoff):
-                target_k_mer_pos = (
-                    fuzzy_map[query_k_mer_exact][target_k_mer_fuzzy])
-                if query_k_mer in k_mer_alignments:
-                    k_mer_alignments[query_k_mer][0].extend(target_k_mer_pos)
-                else:
-                    k_mer_alignments[query_k_mer] = (target_k_mer_pos, [])
-    query_k_mer_rc_rec = query_k_mer_rec.reverse_complement()
-    query_k_mer_rc_exact = ''.join([query_k_mer_rc_rec[x]
-                                    for x in seed_exact_idxs])
-    query_k_mer_rc_fuzzy = ''.join([query_k_mer_rc_rec[x]
-                                    for x in seed_fuzzy_idxs])
-    query_k_mer_rc = str(query_k_mer_rc_rec.seq)
-    if query_k_mer_rc_exact in fuzzy_map:
-        for target_k_mer_fuzzy in fuzzy_map[query_k_mer_rc_exact]:
-            if (similarity_score(query_k_mer_rc_fuzzy, target_k_mer_fuzzy,
-                                 args.sim_alg, **sim_alg_kwargs) >=
-                    args.sim_cutoff):
-                target_k_mer_rc_pos = (
-                    fuzzy_map[query_k_mer_rc_exact][target_k_mer_fuzzy])
-                if query_k_mer_rc in k_mer_alignments:
-                    k_mer_alignments[query_k_mer_rc][1].extend(
-                        target_k_mer_rc_pos)
-                else:
-                    k_mer_alignments[query_k_mer_rc] = (
-                        [], target_k_mer_rc_pos)
+query_kmers = np.empty((len(query_seq_rec) - k + 1,),
+                       dtype=np.dtype('U' + str(k)))
+query_kmer_align_pos = {'+': [], '-': []}
+for query_kmer_pos, query_kmer in iter_kmers(str(query_seq_rec.seq), k):
+    query_kmers[query_kmer_pos] = query_kmer
+    query_kmer_exact = ''.join([query_kmer[x] for x in seed_exact_idxs])
+    query_kmer_fuzzy = ''.join([query_kmer[x] for x in seed_fuzzy_idxs])
+    if query_kmer_exact in fuzzy_map:
+        for target_kmer_fuzzy in fuzzy_map[query_kmer_exact]:
+            if (similarity_score(
+                    query_kmer_fuzzy, target_kmer_fuzzy,
+                    args.sim_alg, **sim_alg_kwargs) >= args.sim_cutoff):
+                for target_kmer_pos in (
+                        fuzzy_map[query_kmer_exact][target_kmer_fuzzy]):
+                    query_kmer_align_pos['+'].append(
+                        (query_kmer_pos, target_kmer_pos))
+    if args.seq_type == 'dna':
+        query_kmer_rc = str(Seq(query_kmer,
+                                alphabet=seq_alphabet).reverse_complement())
+        query_kmer_rc_exact = ''.join([query_kmer_rc[x]
+                                       for x in seed_exact_idxs])
+        query_kmer_rc_fuzzy = ''.join([query_kmer_rc[x]
+                                       for x in seed_fuzzy_idxs])
+        if query_kmer_rc_exact in fuzzy_map:
+            for target_kmer_fuzzy in fuzzy_map[query_kmer_rc_exact]:
+                if (similarity_score(
+                        query_kmer_rc_fuzzy, target_kmer_fuzzy,
+                        args.sim_alg, **sim_alg_kwargs) >= args.sim_cutoff):
+                    for target_kmer_rc_pos in (
+                            fuzzy_map[query_kmer_rc_exact][target_kmer_fuzzy]):
+                        query_kmer_align_pos['-'].append(
+                            (query_kmer_pos, target_kmer_rc_pos))

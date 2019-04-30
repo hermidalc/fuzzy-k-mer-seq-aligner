@@ -1,8 +1,12 @@
 name: fuzzy-k-mer-seq-aligner
 channels:
-  - conda-forge
   - defaults
+  - conda-forge
+  - bioconda
 dependencies:
   - biopython
+  - cython
   - numpy
+  - python
   - python-levenshtein
+  - snakemake-minimal

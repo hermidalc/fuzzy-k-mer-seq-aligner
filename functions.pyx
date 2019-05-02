@@ -1,7 +1,9 @@
+# iterate over k-mers in a sequence
 def iter_kmers(str seq, int k):
     for i in range(len(seq) - k + 1):
         yield i, seq[i:(i + k)]
 
+# build fuzzy hash map
 def build_fuzzy_map(str seq, int k, list seed_exact_idxs,
                     list seed_fuzzy_idxs):
     fuzzy_map = {}

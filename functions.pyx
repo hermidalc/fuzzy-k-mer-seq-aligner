@@ -53,7 +53,6 @@ def calc_similarity_score(str query, str target, str seq_type, str algo,
     return score
 
 
-# build alignments from query k-mer alignments
 def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                      unsigned int k, list seed_exact_idxs,
                      list seed_fuzzy_idxs, aligner, args):
@@ -93,7 +92,7 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                                                 [target_kmer_fuzzy]):
                             query_kmer_alignments['-'].append(
                                 [target_kmer_pos, query_kmer_pos, False])
-    # build query alignments from k-mer alignments
+    # group query k-mer alignments and build overall alignments from groups
     cdef str strand
     cdef list alignments, alignment_grp
     cdef np.ndarray alignment_grp_scores = np.zeros(
@@ -112,8 +111,6 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                             alignment_grp.append(tuple(alignments[j][:2]))
                             alignment_grp_idxs.append(j)
                     else:
-                        for idx in alignment_grp_idxs:
-                            alignments[idx][2] = True
                         # build alignment from alignment group
                         alignment_score = 0.
                         query_align_parts = []
@@ -165,10 +162,20 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                             for target_chr, query_chr in zip(
                                     target_kmer, query_kmer):
                                 if target_chr == query_chr:
-                                    alignment_score += aligner.match
+                                    if args.seq_type in ('dna', 'rna'):
+                                        alignment_score += aligner.match
+                                    else:
+                                        alignment_score = (
+                                            aligner.substitution_matrix[
+                                                (target_chr, query_chr)])
                                     pairwise_align_parts.append('|')
                                 else:
-                                    alignment_score += aligner.mismatch
+                                    if args.seq_type in ('dna', 'rna'):
+                                        alignment_score += aligner.mismatch
+                                    else:
+                                        alignment_score = (
+                                            aligner.substitution_matrix[
+                                                (target_chr, query_chr)])
                                     pairwise_align_parts.append(' ')
                         query_alignment = ''.join(query_align_parts)
                         pairwise_alignment = ''.join(pairwise_align_parts)
@@ -177,4 +184,7 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                         print('\n'.join([query_alignment,
                                          pairwise_alignment,
                                          target_alignment]))
+                        # flag used alignments
+                        for idx in alignment_grp_idxs:
+                            alignments[idx][2] = True
                         break

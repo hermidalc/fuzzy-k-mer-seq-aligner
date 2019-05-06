@@ -16,15 +16,9 @@ parser = ArgumentParser()
 parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
                     help='fuzzy k-mer seed pattern')
 parser.add_argument('--query-seq', '-qs', type=str, required=True,
-                    help='query sequence file')
-parser.add_argument('--query-fmt', '-qf', type=str, default='fasta',
-                    help='query sequence format (any Biopython SeqIO '
-                         'supported format)')
+                    help='query FASTA sequence file')
 parser.add_argument('--target-seq', '-ts', type=str, required=True,
-                    help='target sequence file')
-parser.add_argument('--target-fmt', '-tf', type=str, default='fasta',
-                    help='target sequence format (any Biopython SeqIO '
-                         'supported format)')
+                    help='target FASTA sequence file')
 parser.add_argument('--seq-type', '-st', type=str, required=True,
                     choices=['dna', 'rna', 'protein'], help='sequence type')
 parser.add_argument('--sim-algo', '-sa', type=str, default='levenshtein',
@@ -36,15 +30,16 @@ parser.add_argument('--match-score', '-ms', type=float, default='2.0',
                     help='match score')
 parser.add_argument('--mismatch-score', '-ss', type=float, default='-1.0',
                     help='mismatch score')
-parser.add_argument('--gap-score', '-gs', type=float, help='gap score')
-parser.add_argument('--extend-gap-score', '-es', type=float,
+parser.add_argument('--open-gap-score', '-og', type=float,
+                    help='open gap score')
+parser.add_argument('--extend-gap-score', '-eg', type=float,
                     help='extend gap score')
 parser.add_argument('--sub-matrix', '-sm', type=str, default='blosum62',
                     help='substitution matrix (any Biopython MatrixInfo '
                          'matrix name)')
-parser.add_argument('--id-cutoff', '-ic', type=float, default='0.7',
-                    help='identity cutoff')
-parser.add_argument('--align-fmt', '-af', type=str, default='tabular',
+parser.add_argument('--expect-thres', '-et', type=float, default='10.0',
+                    help='expect value theshold')
+parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
                     choices=['tabular', 'pairwise'],
                     help='alignment output format')
 args = parser.parse_args()
@@ -66,18 +61,18 @@ if args.sim_algo == 'smith-waterman':
     if args.seq_type in ('dna', 'rna'):
         aligner.match = args.match_score
         aligner.mismatch = args.mismatch_score
-        if not args.gap_score:
-            args.gap_score = -1
+        if not args.open_gap_score:
+            args.open_gap_score = -1.0
         if not args.extend_gap_score:
-            args.extend_gap_score = -1
+            args.extend_gap_score = -1.0
     else:
         aligner.substitution_matrix = getattr(
             import_module('Bio.SubsMat.MatrixInfo'), args.sub_matrix)
-        if not args.gap_score:
-            args.gap_score = -11
+        if not args.open_gap_score:
+            args.open_gap_score = -11.0
         if not args.extend_gap_score:
-            args.extend_gap_score = -1
-    aligner.gap_score = args.gap_score
+            args.extend_gap_score = -1.0
+    aligner.open_gap_score = args.open_gap_score
     aligner.extend_gap_score = args.extend_gap_score
 else:
     aligner = None
@@ -88,13 +83,11 @@ seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
 query_seq_fh = open(args.query_seq, 'r')
 target_seq_fh = open(args.target_seq, 'r')
 for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
-    # build target sequence fuzzy hash map
     fuzzy_map = build_fuzzy_map(target_seq, k, seed_exact_idxs,
                                 seed_fuzzy_idxs)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
         build_alignments(fuzzy_map, query_seq, target_seq, k, seed_exact_idxs,
                          seed_fuzzy_idxs, aligner, args)
-    # free up memory
     del fuzzy_map
 target_seq_fh.close()
 query_seq_fh.close()

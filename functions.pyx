@@ -63,10 +63,7 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
     cdef float similarity_score
     cdef str query_kmer, query_kmer_rc, query_kmer_exact, query_kmer_rc_exact
     cdef str query_kmer_fuzzy, query_kmer_rc_fuzzy, target_kmer_fuzzy
-    cdef np.ndarray query_kmers = np.empty(
-        (len(query_seq) - k + 1,), dtype=np.dtype('U' + str(k)))
     for query_kmer_pos, query_kmer in kmers(query_seq, k):
-        query_kmers[query_kmer_pos] = query_kmer
         query_kmer_exact = ''.join([query_kmer[x] for x in seed_exact_idxs])
         query_kmer_fuzzy = ''.join([query_kmer[x] for x in seed_fuzzy_idxs])
         if query_kmer_exact in fuzzy_map:
@@ -110,11 +107,74 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                 alignment_grp_idxs = [i]
                 for j in range(i + 1, len(alignments)):
                     if alignments[j][0] - alignment_grp[-1][0] < k:
-                        if 0 < alignments[j][1] - alignment_grp[-1][1] < k:
+                        if (alignments[j][0] - alignment_grp[-1][0] ==
+                                alignments[j][1] - alignment_grp[-1][1]):
                             alignment_grp.append(tuple(alignments[j][:2]))
                             alignment_grp_idxs.append(j)
                     else:
                         for idx in alignment_grp_idxs:
                             alignments[idx][2] = True
-                        # TODO: build alignments from alignment group here
+                        # build alignment from alignment group
+                        alignment_score = 0.
+                        query_align_parts = []
+                        pairwise_align_parts = []
+                        target_align_parts = []
+                        next_query_seq_pos = None
+                        next_target_seq_pos = None
+                        for target_seq_pos, query_seq_pos in alignment_grp:
+                            if next_target_seq_pos:
+                                if target_seq_pos < next_target_seq_pos:
+                                    target_seq_start_pos = next_target_seq_pos
+                                elif target_seq_pos > next_target_seq_pos:
+                                    target_seq_start_pos = target_seq_pos
+                                    gap_size = (
+                                        target_seq_pos - next_target_seq_pos)
+                                    target_seq_gap = target_seq[
+                                        target_seq_pos:(target_seq_pos +
+                                                        gap_size)]
+                                    target_align_parts.append(target_seq_gap)
+                                else:
+                                    target_seq_start_pos = target_seq_pos
+                            else:
+                                target_seq_start_pos = target_seq_pos
+                            if next_query_seq_pos:
+                                if query_seq_pos < next_query_seq_pos:
+                                    query_seq_start_pos = next_query_seq_pos
+                                elif query_seq_pos > next_query_seq_pos:
+                                    query_seq_start_pos = query_seq_pos
+                                    gap_size = (
+                                        query_seq_pos - next_query_seq_pos)
+                                    alignment_score += sum(
+                                        aligner.open_gap_score if g == 0 else
+                                        aligner.extend_gap_score
+                                        for g in range(gap_size))
+                                    query_align_parts.append('-' * gap_size)
+                                    pairwise_align_parts.append(' ' * gap_size)
+                                else:
+                                    query_seq_start_pos = query_seq_pos
+                            else:
+                                query_seq_start_pos = query_seq_pos
+                            next_target_seq_pos = target_seq_pos + k
+                            next_query_seq_pos = query_seq_pos + k
+                            target_kmer = target_seq[
+                                target_seq_start_pos:next_target_seq_pos]
+                            query_kmer = query_seq[
+                                query_seq_start_pos:next_query_seq_pos]
+                            query_align_parts.append(query_kmer)
+                            target_align_parts.append(target_kmer)
+                            for target_chr, query_chr in zip(
+                                    target_kmer, query_kmer):
+                                if target_chr == query_chr:
+                                    alignment_score += aligner.match
+                                    pairwise_align_parts.append('|')
+                                else:
+                                    alignment_score += aligner.mismatch
+                                    pairwise_align_parts.append(' ')
+                        query_alignment = ''.join(query_align_parts)
+                        pairwise_alignment = ''.join(pairwise_align_parts)
+                        target_alignment = ''.join(target_align_parts)
+                        print(alignment_score)
+                        print('\n'.join([query_alignment,
+                                         pairwise_alignment,
+                                         target_alignment]))
                         break

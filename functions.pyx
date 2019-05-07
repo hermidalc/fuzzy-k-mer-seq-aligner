@@ -17,14 +17,13 @@ def kmers(str seq, unsigned int k):
 
 
 # build fuzzy hash map
-def build_fuzzy_map(str seq, unsigned int k, list seed_exact_idxs,
-                    list seed_fuzzy_idxs):
+def build_fuzzy_map(str seq, args):
     cdef dict fuzzy_map = {}
     cdef unsigned int kmer_pos
     cdef str kmer, kmer_exact, kmer_fuzzy
-    for kmer_pos, kmer in kmers(seq, k):
-        kmer_exact = ''.join([kmer[x] for x in seed_exact_idxs])
-        kmer_fuzzy = ''.join([kmer[x] for x in seed_fuzzy_idxs])
+    for kmer_pos, kmer in kmers(seq, args.k):
+        kmer_exact = ''.join([kmer[x] for x in args.seed_exact_idxs])
+        kmer_fuzzy = ''.join([kmer[x] for x in args.seed_fuzzy_idxs])
         if kmer_exact not in fuzzy_map:
             fuzzy_map[kmer_exact] = {kmer_fuzzy: [kmer_pos]}
         elif kmer_fuzzy not in fuzzy_map[kmer_exact]:
@@ -53,18 +52,19 @@ def calc_similarity_score(str query, str target, str seq_type, str algo,
     return score
 
 
-def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
-                     unsigned int k, list seed_exact_idxs,
-                     list seed_fuzzy_idxs, aligner, args):
+def build_alignments(dict fuzzy_map, str query_seq, str target_seq, aligner,
+                     args):
     # align query k-mers to target sequence
     cdef dict query_kmer_alignments = {'+': [], '-': []}
     cdef unsigned int query_kmer_pos, target_kmer_pos
     cdef float similarity_score
     cdef str query_kmer, query_kmer_rc, query_kmer_exact, query_kmer_rc_exact
     cdef str query_kmer_fuzzy, query_kmer_rc_fuzzy, target_kmer_fuzzy
-    for query_kmer_pos, query_kmer in kmers(query_seq, k):
-        query_kmer_exact = ''.join([query_kmer[x] for x in seed_exact_idxs])
-        query_kmer_fuzzy = ''.join([query_kmer[x] for x in seed_fuzzy_idxs])
+    for query_kmer_pos, query_kmer in kmers(query_seq, args.k):
+        query_kmer_exact = ''.join([query_kmer[x]
+                                    for x in args.seed_exact_idxs])
+        query_kmer_fuzzy = ''.join([query_kmer[x]
+                                    for x in args.seed_fuzzy_idxs])
         if query_kmer_exact in fuzzy_map:
             for target_kmer_fuzzy in fuzzy_map[query_kmer_exact]:
                 similarity_score = calc_similarity_score(
@@ -79,9 +79,9 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
         if args.seq_type == 'dna':
             query_kmer_rc = reverse_complement(query_kmer)
             query_kmer_rc_exact = ''.join([query_kmer_rc[x]
-                                           for x in seed_exact_idxs])
+                                           for x in args.seed_exact_idxs])
             query_kmer_rc_fuzzy = ''.join([query_kmer_rc[x]
-                                           for x in seed_fuzzy_idxs])
+                                           for x in args.seed_fuzzy_idxs])
             if query_kmer_rc_exact in fuzzy_map:
                 for target_kmer_fuzzy in fuzzy_map[query_kmer_rc_exact]:
                     similarity_score = calc_similarity_score(
@@ -105,9 +105,10 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                 alignment_grp = [tuple(alignments[i][:2])]
                 alignment_grp_idxs = [i]
                 for j in range(i + 1, len(alignments)):
-                    if alignments[j][0] - alignment_grp[-1][0] < k:
-                        if (alignments[j][0] - alignment_grp[-1][0] ==
-                                alignments[j][1] - alignment_grp[-1][1]):
+                    if (alignments[j][0] - alignment_grp[-1][0]
+                            < args.max_kmer_gap):
+                        if (alignments[j][0] - alignment_grp[-1][0]
+                                == alignments[j][1] - alignment_grp[-1][1]):
                             alignment_grp.append(tuple(alignments[j][:2]))
                             alignment_grp_idxs.append(j)
                     else:
@@ -151,8 +152,8 @@ def build_alignments(dict fuzzy_map, str query_seq, str target_seq,
                                     query_seq_start_pos = query_seq_pos
                             else:
                                 query_seq_start_pos = query_seq_pos
-                            next_target_seq_pos = target_seq_pos + k
-                            next_query_seq_pos = query_seq_pos + k
+                            next_target_seq_pos = target_seq_pos + args.k
+                            next_query_seq_pos = query_seq_pos + args.k
                             target_kmer = target_seq[
                                 target_seq_start_pos:next_target_seq_pos]
                             query_kmer = query_seq[

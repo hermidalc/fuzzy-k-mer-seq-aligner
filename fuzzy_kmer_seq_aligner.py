@@ -37,8 +37,10 @@ parser.add_argument('--extend-gap-score', '-eg', type=float,
 parser.add_argument('--sub-matrix', '-sm', type=str, default='blosum62',
                     help='substitution matrix (any Biopython MatrixInfo '
                          'matrix name)')
+parser.add_argument('--max-kmer-gap', '-mg', type=int, default='30',
+                    help='maximum gap size when grouping kmers')
 parser.add_argument('--expect-thres', '-et', type=float, default='10.0',
-                    help='expect value theshold')
+                    help='expect value threshold')
 parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
                     choices=['tabular', 'pairwise'],
                     help='alignment output format')
@@ -77,17 +79,15 @@ if args.sim_algo == 'smith-waterman':
 else:
     aligner = None
 
-k = len(args.fuzzy_seed)
-seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
-seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
+args.k = len(args.fuzzy_seed)
+args.seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
+args.seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
 query_seq_fh = open(args.query_seq, 'r')
 target_seq_fh = open(args.target_seq, 'r')
 for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
-    fuzzy_map = build_fuzzy_map(target_seq, k, seed_exact_idxs,
-                                seed_fuzzy_idxs)
+    fuzzy_map = build_fuzzy_map(target_seq, args)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
-        build_alignments(fuzzy_map, query_seq, target_seq, k, seed_exact_idxs,
-                         seed_fuzzy_idxs, aligner, args)
+        build_alignments(fuzzy_map, query_seq, target_seq, aligner, args)
     del fuzzy_map
 target_seq_fh.close()
 query_seq_fh.close()

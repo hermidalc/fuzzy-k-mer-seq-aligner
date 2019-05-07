@@ -1,4 +1,4 @@
-name: fuzzy-k-mer-seq-aligner
+name: fuzzy-kmer-seq-aligner
 channels:
   - defaults
   - conda-forge

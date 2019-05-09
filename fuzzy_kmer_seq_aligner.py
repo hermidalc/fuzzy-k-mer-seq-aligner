@@ -9,8 +9,7 @@ from Bio.Alphabet.IUPAC import (ExtendedIUPACProtein, IUPACAmbiguousDNA,
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pyximport
 pyximport.install(inplace=True)
-from functions import build_alignments, build_fuzzy_map
-
+from functions import build_fuzzy_map, pairwise_align
 
 parser = ArgumentParser()
 parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
@@ -50,6 +49,7 @@ for file in (args.query_seq, args.target_seq):
     if not path.isfile(file):
         parser.error("File %s doesn't exist" % file)
 
+# alphabet
 if args.seq_type == 'dna':
     seq_alphabet = IUPACAmbiguousDNA()
 elif args.seq_type == 'rna':
@@ -57,6 +57,15 @@ elif args.seq_type == 'rna':
 else:
     seq_alphabet = ExtendedIUPACProtein()
 
+# Karlin-Altschul statistics
+if args.seq_type in ('dna', 'rna'):
+    args.ka_gapped_k = 0.460
+    args.ka_gapped_l = 1.280
+else:
+    args.ka_gapped_k = 0.041
+    args.ka_gapped_l = 0.267
+
+# Smith-Waterman setup
 if args.sim_algo == 'smith-waterman':
     aligner = PairwiseAligner()
     aligner.mode = 'local'
@@ -87,7 +96,12 @@ target_seq_fh = open(args.target_seq, 'r')
 for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
     fuzzy_map = build_fuzzy_map(target_seq, args)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
-        build_alignments(fuzzy_map, query_seq, target_seq, aligner, args)
+        for alignment in pairwise_align(fuzzy_map, query_seq, target_seq,
+                                        aligner, args):
+            print(alignment['e_value'])
+            print('\n'.join([alignment['query'],
+                             alignment['match'],
+                             alignment['target']]))
     del fuzzy_map
 target_seq_fh.close()
 query_seq_fh.close()

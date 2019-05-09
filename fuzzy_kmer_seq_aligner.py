@@ -65,28 +65,36 @@ else:
     args.ka_gapped_k = 0.041
     args.ka_gapped_l = 0.267
 
-# Smith-Waterman setup
-if args.sim_algo == 'smith-waterman':
-    aligner = PairwiseAligner()
-    aligner.mode = 'local'
-    if args.seq_type in ('dna', 'rna'):
-        aligner.match = args.match_score
-        aligner.mismatch = args.mismatch_score
-        if not args.open_gap_score:
-            args.open_gap_score = -1.0
-        if not args.extend_gap_score:
-            args.extend_gap_score = -1.0
-    else:
-        aligner.substitution_matrix = getattr(
-            import_module('Bio.SubsMat.MatrixInfo'), args.sub_matrix)
-        if not args.open_gap_score:
-            args.open_gap_score = -11.0
-        if not args.extend_gap_score:
-            args.extend_gap_score = -1.0
-    aligner.open_gap_score = args.open_gap_score
-    aligner.extend_gap_score = args.extend_gap_score
+# Aligners setup
+aligners = {'global': PairwiseAligner(), 'local': None}
+aligners['global'].mode = 'global'
+if args.seq_type in ('dna', 'rna'):
+    aligners['global'].match = args.match_score
+    aligners['global'].mismatch = args.mismatch_score
+    if not args.open_gap_score:
+        args.open_gap_score = -1.0
+    if not args.extend_gap_score:
+        args.extend_gap_score = -1.0
 else:
-    aligner = None
+    sub_matrix = getattr(import_module('Bio.SubsMat.MatrixInfo'),
+                         args.sub_matrix)
+    aligners['global'].substitution_matrix = sub_matrix
+    if not args.open_gap_score:
+        args.open_gap_score = -11.0
+    if not args.extend_gap_score:
+        args.extend_gap_score = -1.0
+aligners['global'].open_gap_score = args.open_gap_score
+aligners['global'].extend_gap_score = args.extend_gap_score
+if args.sim_algo == 'smith-waterman':
+    aligners['local'] = PairwiseAligner()
+    aligners['local'].mode = 'local'
+    if args.seq_type in ('dna', 'rna'):
+        aligners['local'].match = args.match_score
+        aligners['local'].mismatch = args.mismatch_score
+    else:
+        aligners['local'].substitution_matrix = sub_matrix
+    aligners['local'].open_gap_score = args.open_gap_score
+    aligners['local'].extend_gap_score = args.extend_gap_score
 
 args.k = len(args.fuzzy_seed)
 args.seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
@@ -97,7 +105,7 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
     fuzzy_map = build_fuzzy_map(target_seq, args)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
         for alignment in pairwise_align(fuzzy_map, query_seq, target_seq,
-                                        aligner, args):
+                                        aligners, args):
             print(alignment['e_value'])
             print('\n'.join([alignment['query'],
                              alignment['match'],

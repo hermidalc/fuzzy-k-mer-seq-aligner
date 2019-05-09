@@ -35,7 +35,7 @@ def build_fuzzy_map(str seq, args):
 
 
 def calc_similarity_score(str query, str target, str seq_type, str algo,
-                          aligner):
+                          aligners):
     cdef float score, perfect_score
     if algo == 'levenshtein':
         score = 1 - distance(query, target) / len(target)
@@ -43,94 +43,126 @@ def calc_similarity_score(str query, str target, str seq_type, str algo,
         score = 1 - hamming(query, target) / len(target)
     elif algo == 'smith-waterman':
         if seq_type in ('dna', 'rna'):
-            perfect_score = len(target) * aligner.match
+            perfect_score = len(target) * aligners['local'].match
         else:
             perfect_score = np.sum(
-                [aligner.substitution_matrix[(c, c)] for c in target])
-        score = aligner.score(query, target) / perfect_score
+                [aligners['local'].substitution_matrix[(c, c)]
+                for c in target])
+        score = aligners['local'].score(query, target) / perfect_score
     else:
         score = 0
     return score
 
 
 # build local alignment from query k-mer alignment group
-def build_alignment(list alignment_grp, str query_seq, str target_seq, aligner,
-                    args):
+def build_alignment(list alignment_grp, str query_seq, str target_seq,
+                    str strand, aligners, args):
     cdef float raw_score = 0
     cdef float bit_score
-    cdef list query_align_strs = []
-    cdef list match_align_strs = []
-    cdef list target_align_strs = []
-    cdef str query_kmer, query_chr, target_kmer, target_chr, target_seq_gap
+    cdef list query_align_parts = []
+    cdef list match_align_parts = []
+    cdef list target_align_parts = []
+    cdef str query_align_gap, match_align_gap, target_align_gap
+    cdef str query_gap, query_kmer, query_chr
+    cdef str target_gap, target_kmer, target_chr
     cdef str query_alignment, match_alignment, target_alignment
+    cdef unsigned int num_idents = 0
+    cdef unsigned int num_gaps = 0
     cdef unsigned int query_seq_pos, query_seq_start_pos
     cdef unsigned int target_seq_pos, target_seq_start_pos
-    cdef unsigned int gap_size, g
+    cdef int query_gap_size, target_gap_size, g
     cdef int query_seq_curr_pos = -1
     cdef int target_seq_curr_pos = -1
     for target_seq_pos, query_seq_pos in alignment_grp:
         if target_seq_curr_pos >= 0:
-            if target_seq_pos < <unsigned int>target_seq_curr_pos:
+            target_gap_size = target_seq_pos - target_seq_curr_pos
+            query_gap_size = query_seq_pos - query_seq_curr_pos
+            if target_gap_size < 0:
                 target_seq_start_pos = target_seq_curr_pos
-            elif target_seq_pos > <unsigned int>target_seq_curr_pos:
-
+                query_seq_start_pos = query_seq_curr_pos
+            elif target_gap_size > 0:
+                target_gap = target_seq[target_seq_curr_pos:(
+                    target_seq_curr_pos + target_gap_size)]
+                if query_gap_size > 0:
+                    query_gap = query_seq[query_seq_curr_pos:(
+                        query_seq_curr_pos + query_gap_size)]
+                    gap_alignment = aligners['global'].align(
+                        query_gap, target_gap)[0]
+                    raw_score += gap_alignment.score
+                    query_align_gap, match_align_gap, target_align_gap = str(
+                        gap_alignment).split('\n')[:3]
+                    match_align_gap = match_align_gap.replace('X', ' ')
+                    match_align_gap = match_align_gap.replace('-', ' ')
+                    query_align_parts.append(query_align_gap)
+                    match_align_parts.append(match_align_gap)
+                    target_align_parts.append(target_align_gap)
+                else:
+                    raw_score += sum(
+                        args.open_gap_score if g == 0 else
+                        args.extend_gap_score for g in range(target_gap_size))
+                    query_align_parts.append('-' * target_gap_size)
+                    match_align_parts.append(' ' * target_gap_size)
+                    target_align_parts.append(target_gap)
                 target_seq_start_pos = target_seq_pos
-                gap_size = target_seq_pos - target_seq_curr_pos
-                target_seq_gap = target_seq[target_seq_pos:(
-                    target_seq_pos + gap_size)]
-                target_align_strs.append(target_seq_gap)
+                query_seq_start_pos = query_seq_pos
             else:
+                if query_gap_size > 0:
+                    query_gap = query_seq[query_seq_curr_pos:(
+                        query_seq_curr_pos + query_gap_size)]
+                    raw_score += sum(
+                        args.open_gap_score if g == 0 else
+                        args.extend_gap_score for g in range(query_gap_size))
+                    query_align_parts.append(query_gap)
+                    match_align_parts.append(' ' * query_gap_size)
+                    target_align_parts.append('-' * query_gap_size)
                 target_seq_start_pos = target_seq_pos
+                query_seq_start_pos = query_seq_pos
         else:
             target_seq_start_pos = target_seq_pos
-        if query_seq_curr_pos >= 0:
-            if query_seq_pos < <unsigned int>query_seq_curr_pos:
-                query_seq_start_pos = query_seq_curr_pos
-            elif query_seq_pos > <unsigned int>query_seq_curr_pos:
-                query_seq_start_pos = query_seq_pos
-                gap_size = query_seq_pos - query_seq_curr_pos
-                raw_score += sum(
-                    args.open_gap_score if g == 0 else
-                    args.extend_gap_score for g in range(gap_size))
-                query_align_strs.append('-' * gap_size)
-                match_align_strs.append(' ' * gap_size)
-            else:
-                query_seq_start_pos = query_seq_pos
-        else:
             query_seq_start_pos = query_seq_pos
         target_seq_curr_pos = target_seq_pos + args.k
         query_seq_curr_pos = query_seq_pos + args.k
         target_kmer = target_seq[target_seq_start_pos:target_seq_curr_pos]
         query_kmer = query_seq[query_seq_start_pos:query_seq_curr_pos]
-        query_align_strs.append(query_kmer)
-        target_align_strs.append(target_kmer)
-        for target_chr, query_chr in zip(
-                target_kmer, query_kmer):
+        query_align_parts.append(query_kmer)
+        target_align_parts.append(target_kmer)
+        for target_chr, query_chr in zip(target_kmer, query_kmer):
             if args.seq_type in ('dna', 'rna'):
                 if query_chr == target_chr:
                     raw_score += args.match_score
-                    match_align_strs.append('|')
+                    match_align_parts.append('|')
                 else:
                     raw_score += args.mismatch_score
-                    match_align_strs.append(' ')
+                    match_align_parts.append(' ')
             else:
-                raw_score += aligner.substitution_matrix[
+                raw_score += aligners['global'].substitution_matrix[
                     (query_chr, target_chr)]
                 if query_chr == target_chr:
-                    match_align_strs.append('|')
+                    match_align_parts.append('|')
                 else:
-                    match_align_strs.append(' ')
+                    match_align_parts.append(' ')
+    query_alignment = ''.join(query_align_parts)
+    match_alignment = ''.join(match_align_parts)
+    target_alignment = ''.join(target_align_parts)
     bit_score = (args.ka_gapped_l * raw_score - log(args.ka_gapped_k)) / log(2)
-    return {'query': ''.join(query_align_strs),
-            'match': ''.join(match_align_strs),
-            'target': ''.join(target_align_strs),
+    return {'query': query_alignment,
+            'match': match_alignment,
+            'target': target_alignment,
+            'query_start': alignment_grp[0][1],
+            'query_end': alignment_grp[-1][1] + args.k - 1,
+            'target_start': alignment_grp[0][0],
+            'target_end': alignment_grp[-1][0] + args.k - 1,
             'raw_score': raw_score,
             'bit_score': bit_score,
             'e_value': len(query_seq) * len(target_seq) / (2 ** bit_score),
-            'p_value': 2 ** (-bit_score)}
+            'p_value': 2 ** (-bit_score),
+            'num_idents': match_alignment.count('|'),
+            'num_gaps': (query_alignment.count('-') +
+                         target_alignment.count('-')),
+            'strand': strand}
 
 
-def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligner,
+def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligners,
                    args):
     # align query k-mers to target sequence
     cdef dict query_kmer_alignments = {'+': [], '-': []}
@@ -147,7 +179,7 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligner,
             for target_kmer_fuzzy in fuzzy_map[query_kmer_exact]:
                 similarity_score = calc_similarity_score(
                     query_kmer_fuzzy, target_kmer_fuzzy, args.seq_type,
-                    args.sim_algo, aligner)
+                    args.sim_algo, aligners)
                 if similarity_score >= args.sim_cutoff:
                     for target_kmer_pos in (fuzzy_map[query_kmer_exact]
                                             [target_kmer_fuzzy]):
@@ -163,8 +195,8 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligner,
             if query_kmer_rc_exact in fuzzy_map:
                 for target_kmer_fuzzy in fuzzy_map[query_kmer_rc_exact]:
                     similarity_score = calc_similarity_score(
-                        query_kmer_rc_fuzzy, target_kmer_fuzzy,
-                        args.seq_type, args.sim_algo, aligner)
+                        query_kmer_rc_fuzzy, target_kmer_fuzzy, args.seq_type,
+                        args.sim_algo, aligners)
                     if similarity_score >= args.sim_cutoff:
                         for target_kmer_pos in (fuzzy_map[query_kmer_rc_exact]
                                                 [target_kmer_fuzzy]):
@@ -203,7 +235,8 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligner,
                         for idx in alignment_grp_idxs:
                             alignments[idx][2] = True
                         alignment = build_alignment(alignment_grp, query_seq,
-                                                    target_seq, aligner, args)
+                                                    target_seq, strand,
+                                                    aligners, args)
                         if alignment['e_value'] <= args.expect_thres:
                             yield alignment
                         break

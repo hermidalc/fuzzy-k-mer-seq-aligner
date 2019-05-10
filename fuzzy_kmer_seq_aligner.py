@@ -11,7 +11,6 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pyximport
 pyximport.install(inplace=True)
 from functions import build_fuzzy_map, pairwise_align
-from pprint import pprint
 
 parser = ArgumentParser()
 parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
@@ -112,15 +111,19 @@ elif args.align_sort in ('score', 'pct_id'):
     align_sort_rev = True
 
 if args.align_fmt == 'pairwise':
-    pw_header_fmt = dedent('''
+    pw_header_fmt = dedent('''\
+    Query ID: {qid:<{ipad}} (Length = {qlen:>{lenpad}})
+    Sbjct ID: {sid:<{ipad}} (Length = {slen:>{lenpad}})
+    ''')
+    pw_section_header_fmt = dedent('''\
     Score = {bits:.1f} bits ({raw}), Expect = {eval:{efmt}}
     Identities = {ids}/{idt} ({idp:.0%}), Gaps = {gaps}/{gapt} ({gapp:.0%})\
     {strand}
     ''')
-    pw_align_fmt = dedent('''\
-    Query   {qstar:<{lpad}}   {query}   {qend}
+    pw_alignment_fmt = dedent('''\
+    Query   {qstar:<{lenpad}}   {query}   {qend}
     {mpad}{match}
-    Sbjct   {sstar:<{lpad}}   {sbjct}   {send}\
+    Sbjct   {sstar:<{lenpad}}   {sbjct}   {send}\
     ''')
 
 args.k = len(args.fuzzy_seed)
@@ -136,37 +139,53 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                                args),
                 key=lambda a: a[args.align_sort], reverse=align_sort_rev)):
             if args.align_fmt == 'pairwise':
+                lenpad = len(str(max(len(query_seq), len(target_seq))))
+                print(pw_header_fmt.format(
+                    qid=query_seq_title, ipad=5,
+                    qlen=len(query_seq), lenpad=lenpad,
+                    sid=target_seq_title, slen=len(target_seq)
+                ))
                 efmt = '.3' + ('e' if alignment['e_value'] < 1e-3 else 'f')
                 idp = alignment['num_ids'] / len(query_seq) * 100
                 gapp = alignment['num_gaps'] / len(query_seq) * 100
-                strand = ''
                 if args.seq_type == 'dna':
-                    strand = '\nStrand = Plus/' + (
-                        'Plus' if alignment['strand'] == '+' else 'Minus')
-                print(pw_header_fmt.format(
+                    strand = '\nStrand = Plus/' + alignment['strand']
+                else:
+                    strand = ''
+                print(pw_section_header_fmt.format(
                     bits=alignment['bit_score'], raw=alignment['raw_score'],
                     eval=alignment['e_value'], efmt=efmt,
                     ids=alignment['num_ids'], idt=len(query_seq), idp=idp,
                     gaps=alignment['num_gaps'], gapt=len(query_seq),
                     gapp=gapp, strand=strand))
-                lpad = len(str(max(len(query_seq), len(target_seq))))
-                mpad = ' ' * (8 + lpad + 3)
+                mpad = ' ' * (8 + lenpad + 3)
                 for q, m, t in zip(
                         range(alignment['qstart'], alignment['qend'] + 1,
                               args.pwa_width),
                         range(0, len(alignment['match']), args.pwa_width),
                         range(alignment['tstart'], alignment['tend'] + 1,
                               args.pwa_width)):
-                    print(pw_align_fmt.format(
-                        qstar=q + 1, lpad=lpad,
-                        query=alignment['query'][m:(m + args.pwa_width)],
-                        qend=q + args.pwa_width,
-                        match=alignment['match'][m:(m + args.pwa_width)],
-                        sstar=t + 1, mpad=mpad,
-                        sbjct=alignment['target'][m:(m + args.pwa_width)],
-                        send=t + args.pwa_width
-                    ))
-            if i == args.max_aligns: break
+                    if m + args.pwa_width < len(alignment['match']):
+                        pwa_width = args.pwa_width
+                    else:
+                        pwa_width = len(alignment['match'])
+                    if alignment['strand'] == 'Plus':
+                        sstar = t + 1
+                        send = t + pwa_width
+                    else:
+                        sstar = t + pwa_width
+                        send = t + 1
+                    print(pw_alignment_fmt.format(
+                        qstar=q + 1, lenpad=lenpad,
+                        query=alignment['query'][m:(m + pwa_width)],
+                        qend=q + pwa_width,
+                        match=alignment['match'][m:(m + pwa_width)],
+                        sstar=sstar, mpad=mpad,
+                        sbjct=alignment['target'][m:(m + pwa_width)],
+                        send=send))
+                print()
+            if i == args.max_aligns:
+                break
     del fuzzy_map
 target_seq_fh.close()
 query_seq_fh.close()

@@ -112,8 +112,8 @@ elif args.align_sort in ('score', 'pct_id'):
 
 if args.align_fmt == 'pairwise':
     pw_header_fmt = dedent('''\
-    Query: {qid:<{ipad}} (Length = {qlen:>{lenpad}})
-    Sbjct: {sid:<{ipad}} (Length = {slen:>{lenpad}})
+    Query: {qid} (Length = {qlen})
+    Sbjct: {sid} (Length = {slen})
     ''')
     pw_section_header_fmt = dedent('''\
     Score = {bits:.1f} bits ({raw}), Expect = {eval:{efmt}}
@@ -123,7 +123,7 @@ if args.align_fmt == 'pairwise':
     pw_alignment_fmt = dedent('''\
     Query   {qstar:<{lenpad}}   {query}   {qend}
     {mpad}{match}
-    Sbjct   {sstar:<{lenpad}}   {sbjct}   {send}\
+    Sbjct   {sstar:<{lenpad}}   {sbjct}   {send}
     ''')
 
 args.k = len(args.fuzzy_seed)
@@ -137,10 +137,8 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
         if args.align_fmt == 'pairwise':
             lenpad = len(str(max(len(query_seq), len(target_seq))))
             print(pw_header_fmt.format(
-                qid=query_seq_title, ipad=5,
-                qlen=len(query_seq), lenpad=lenpad,
-                sid=target_seq_title, slen=len(target_seq)
-            ))
+                qid=query_seq_title, qlen=len(query_seq),
+                sid=target_seq_title, slen=len(target_seq)))
         for i, alignment in enumerate(sorted(
                 pairwise_align(fuzzy_map, query_seq, target_seq, aligners,
                                args),
@@ -184,7 +182,6 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                         sstar=sstar, mpad=mpad,
                         sbjct=alignment['target'][m:(m + pwa_width)],
                         send=send))
-                print()
             if i == args.max_aligns:
                 break
     del fuzzy_map

@@ -68,11 +68,11 @@ else:
 
 # Karlin-Altschul statistics
 if args.seq_type in ('dna', 'rna'):
-    args.ka_gapped_k = 0.460
     args.ka_gapped_l = 1.280
+    args.ka_gapped_k = 0.460
 else:
-    args.ka_gapped_k = 0.041
     args.ka_gapped_l = 0.267
+    args.ka_gapped_k = 0.041
 
 # Aligners setup
 aligners = {'global': PairwiseAligner(), 'local': None}

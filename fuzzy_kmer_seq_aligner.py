@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
-from os import path
 from importlib import import_module
+from os import path
+from textwrap import dedent
 from Bio.Align import PairwiseAligner
 from Bio.Alphabet.IUPAC import (ExtendedIUPACProtein, IUPACAmbiguousDNA,
                                 IUPACAmbiguousRNA)
@@ -10,6 +11,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 import pyximport
 pyximport.install(inplace=True)
 from functions import build_fuzzy_map, pairwise_align
+from pprint import pprint
 
 parser = ArgumentParser()
 parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
@@ -20,14 +22,14 @@ parser.add_argument('--target-seq', '-ts', type=str, required=True,
                     help='target FASTA sequence file')
 parser.add_argument('--seq-type', '-st', type=str, required=True,
                     choices=['dna', 'rna', 'protein'], help='sequence type')
-parser.add_argument('--sim-algo', '-sa', type=str, default='levenshtein',
+parser.add_argument('--sim-algo', '-sa', type=str, default='smith-waterman',
                     choices=['levenshtein', 'hamming', 'smith-waterman'],
                     help='string similarity algorithm')
-parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.7',
+parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.6',
                     help='fuzzy membership similarity cutoff')
-parser.add_argument('--match-score', '-ms', type=float, default='2.0',
+parser.add_argument('--match-score', '-ms', type=float, default='2',
                     help='match score')
-parser.add_argument('--mismatch-score', '-ss', type=float, default='-1.0',
+parser.add_argument('--mismatch-score', '-ss', type=float, default='-3',
                     help='mismatch score')
 parser.add_argument('--open-gap-score', '-og', type=float,
                     help='open gap score')
@@ -38,11 +40,19 @@ parser.add_argument('--sub-matrix', '-sm', type=str, default='blosum62',
                          'matrix name)')
 parser.add_argument('--max-kmer-gap', '-mg', type=int, default='30',
                     help='maximum gap size when grouping kmers')
-parser.add_argument('--expect-thres', '-et', type=float, default='10.0',
+parser.add_argument('--expect-thres', '-et', type=float, default='10',
                     help='expect value threshold')
 parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
                     choices=['tabular', 'pairwise'],
                     help='alignment output format')
+parser.add_argument('--align-sort', '-as', type=str, default='e_value',
+                    choices=['e_value', 'score', 'pct_id', 'q_start',
+                             's_start'],
+                    help='alignment output sort')
+parser.add_argument('--max-aligns', '-ma', type=int, default='50',
+                    help='maximum number of alignments to show')
+parser.add_argument('--pwa-width', '-aw', type=int, default='60',
+                    help='pairwise alignment output width')
 args = parser.parse_args()
 
 for file in (args.query_seq, args.target_seq):
@@ -72,17 +82,17 @@ if args.seq_type in ('dna', 'rna'):
     aligners['global'].match = args.match_score
     aligners['global'].mismatch = args.mismatch_score
     if not args.open_gap_score:
-        args.open_gap_score = -1.0
+        args.open_gap_score = -5
     if not args.extend_gap_score:
-        args.extend_gap_score = -1.0
+        args.extend_gap_score = -2
 else:
     sub_matrix = getattr(import_module('Bio.SubsMat.MatrixInfo'),
                          args.sub_matrix)
     aligners['global'].substitution_matrix = sub_matrix
     if not args.open_gap_score:
-        args.open_gap_score = -11.0
+        args.open_gap_score = -11
     if not args.extend_gap_score:
-        args.extend_gap_score = -1.0
+        args.extend_gap_score = -1
 aligners['global'].open_gap_score = args.open_gap_score
 aligners['global'].extend_gap_score = args.extend_gap_score
 if args.sim_algo == 'smith-waterman':
@@ -96,6 +106,23 @@ if args.sim_algo == 'smith-waterman':
     aligners['local'].open_gap_score = args.open_gap_score
     aligners['local'].extend_gap_score = args.extend_gap_score
 
+if args.align_sort in ('e_value', 'q_start', 's_start'):
+    align_sort_rev = False
+elif args.align_sort in ('score', 'pct_id'):
+    align_sort_rev = True
+
+if args.align_fmt == 'pairwise':
+    pw_header_fmt = dedent('''
+    Score = {bits:.1f} bits ({raw}), Expect = {eval:{efmt}}
+    Identities = {ids}/{idt} ({idp:.0%}), Gaps = {gaps}/{gapt} ({gapp:.0%})\
+    {strand}
+    ''')
+    pw_align_fmt = dedent('''\
+    Query   {qstar:<{lpad}}   {query}   {qend}
+    {mpad}{match}
+    Sbjct   {sstar:<{lpad}}   {sbjct}   {send}\
+    ''')
+
 args.k = len(args.fuzzy_seed)
 args.seed_exact_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '#']
 args.seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
@@ -104,12 +131,42 @@ target_seq_fh = open(args.target_seq, 'r')
 for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
     fuzzy_map = build_fuzzy_map(target_seq, args)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
-        for alignment in pairwise_align(fuzzy_map, query_seq, target_seq,
-                                        aligners, args):
-            print(alignment['e_value'])
-            print('\n'.join([alignment['query'],
-                             alignment['match'],
-                             alignment['target']]))
+        for i, alignment in enumerate(sorted(
+                pairwise_align(fuzzy_map, query_seq, target_seq, aligners,
+                               args),
+                key=lambda a: a[args.align_sort], reverse=align_sort_rev)):
+            if args.align_fmt == 'pairwise':
+                efmt = '.3' + ('e' if alignment['e_value'] < 1e-3 else 'f')
+                idp = alignment['num_ids'] / len(query_seq) * 100
+                gapp = alignment['num_gaps'] / len(query_seq) * 100
+                strand = ''
+                if args.seq_type == 'dna':
+                    strand = '\nStrand = Plus/' + (
+                        'Plus' if alignment['strand'] == '+' else 'Minus')
+                print(pw_header_fmt.format(
+                    bits=alignment['bit_score'], raw=alignment['raw_score'],
+                    eval=alignment['e_value'], efmt=efmt,
+                    ids=alignment['num_ids'], idt=len(query_seq), idp=idp,
+                    gaps=alignment['num_gaps'], gapt=len(query_seq),
+                    gapp=gapp, strand=strand))
+                lpad = len(str(max(len(query_seq), len(target_seq))))
+                mpad = ' ' * (8 + lpad + 3)
+                for q, m, t in zip(
+                        range(alignment['qstart'], alignment['qend'] + 1,
+                              args.pwa_width),
+                        range(0, len(alignment['match']), args.pwa_width),
+                        range(alignment['tstart'], alignment['tend'] + 1,
+                              args.pwa_width)):
+                    print(pw_align_fmt.format(
+                        qstar=q + 1, lpad=lpad,
+                        query=alignment['query'][m:(m + args.pwa_width)],
+                        qend=q + args.pwa_width,
+                        match=alignment['match'][m:(m + args.pwa_width)],
+                        sstar=t + 1, mpad=mpad,
+                        sbjct=alignment['target'][m:(m + args.pwa_width)],
+                        send=t + args.pwa_width
+                    ))
+            if i == args.max_aligns: break
     del fuzzy_map
 target_seq_fh.close()
 query_seq_fh.close()

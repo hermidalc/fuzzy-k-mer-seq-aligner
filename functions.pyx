@@ -1,9 +1,9 @@
 # functions.pyx
 # cython: language_level=3, boundscheck=False, wraparound=True, cdivision=True
 
+from math import log
 import numpy as np
 cimport numpy as np
-from math import log
 from operator import itemgetter
 from pprint import pprint
 from Bio.Seq import reverse_complement
@@ -35,7 +35,7 @@ def build_fuzzy_map(str seq, args):
 
 
 def calc_similarity_score(str query, str target, str seq_type, str algo,
-                          aligners):
+                          dict aligners):
     cdef float score, perfect_score
     if algo == 'levenshtein':
         score = 1 - distance(query, target) / len(target)
@@ -56,9 +56,7 @@ def calc_similarity_score(str query, str target, str seq_type, str algo,
 
 # build local alignment from query k-mer alignment group
 def build_alignment(list alignment_grp, str query_seq, str target_seq,
-                    str strand, aligners, args):
-    cdef float raw_score = 0
-    cdef float bit_score
+                    str strand, dict aligners, args):
     cdef list query_align_parts = []
     cdef list match_align_parts = []
     cdef list target_align_parts = []
@@ -66,13 +64,15 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
     cdef str query_gap, query_kmer, query_chr
     cdef str target_gap, target_kmer, target_chr
     cdef str query_alignment, match_alignment, target_alignment
-    cdef unsigned int num_idents = 0
-    cdef unsigned int num_gaps = 0
     cdef unsigned int query_seq_pos, query_seq_start_pos
     cdef unsigned int target_seq_pos, target_seq_start_pos
+    cdef unsigned int num_idents = 0
+    cdef unsigned int num_gaps = 0
     cdef int query_gap_size, target_gap_size, g
+    cdef int raw_score = 0
     cdef int query_seq_curr_pos = -1
     cdef int target_seq_curr_pos = -1
+    cdef float bit_score
     for target_seq_pos, query_seq_pos in alignment_grp:
         if target_seq_curr_pos >= 0:
             target_gap_size = target_seq_pos - target_seq_curr_pos
@@ -148,22 +148,22 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
     return {'query': query_alignment,
             'match': match_alignment,
             'target': target_alignment,
-            'query_start': alignment_grp[0][1],
-            'query_end': alignment_grp[-1][1] + args.k - 1,
-            'target_start': alignment_grp[0][0],
-            'target_end': alignment_grp[-1][0] + args.k - 1,
+            'qstart': alignment_grp[0][1],
+            'qend': alignment_grp[-1][1] + args.k - 1,
+            'tstart': alignment_grp[0][0],
+            'tend': alignment_grp[-1][0] + args.k - 1,
             'raw_score': raw_score,
             'bit_score': bit_score,
             'e_value': len(query_seq) * len(target_seq) / (2 ** bit_score),
             'p_value': 2 ** (-bit_score),
-            'num_idents': match_alignment.count('|'),
+            'num_ids': match_alignment.count('|'),
             'num_gaps': (query_alignment.count('-') +
                          target_alignment.count('-')),
             'strand': strand}
 
 
-def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligners,
-                   args):
+def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
+                   dict aligners, args):
     # align query k-mers to target sequence
     cdef dict query_kmer_alignments = {'+': [], '-': []}
     cdef unsigned int query_kmer_pos, target_kmer_pos
@@ -185,7 +185,7 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligners,
                                             [target_kmer_fuzzy]):
                         query_kmer_alignments['+'].append(
                             [target_kmer_pos, query_kmer_pos, False])
-        # query reverse complement alignment
+        # align query k-mer reverse complement
         if args.seq_type == 'dna':
             query_kmer_rc = reverse_complement(query_kmer)
             query_kmer_rc_exact = ''.join([query_kmer_rc[x]
@@ -206,9 +206,7 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq, aligners,
     cdef dict alignment
     cdef str strand
     cdef list alignments, alignment_grp, alignment_grp_idxs
-    cdef np.ndarray alignment_grp_scores = np.zeros(
-        (len(query_seq),), dtype=np.bool)
-    cdef unsigned int i, j, grp_target_seq_pos, grp_query_seq_pos
+    cdef unsigned int i, j
     for strand, alignments in query_kmer_alignments.items():
         alignments.sort(key=itemgetter(0, 1))
         for i in range(len(alignments)):

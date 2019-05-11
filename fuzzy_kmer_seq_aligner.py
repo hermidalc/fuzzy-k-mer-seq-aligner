@@ -136,7 +136,7 @@ if args.align_fmt == 'pairwise':
     ''')
     pw_section_header_fmt = dedent('''\
     Score = {bits:.1f} bits ({raw}), Expect = {eval:{efmt}}
-    Identities = {ids}/{idt} ({idp:.0%}), Gaps = {gaps}/{gapt} ({gapp:.0%})\
+    Identities = {ids}/{idt} ({idp:.0f}%), Gaps = {gaps}/{gapt} ({gapp:.0f}%)\
     {strand}
     ''')
     pw_alignment_fmt = dedent('''\

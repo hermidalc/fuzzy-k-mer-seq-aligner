@@ -1,4 +1,4 @@
-# Fuzzy K-mer Sequence Aligner
+# Fuzzy K-mer Local Sequence Aligner
 
 ## Installation
 
@@ -9,7 +9,6 @@ git clone git@github.com:hermidalc/fuzzy-kmer-seq-aligner.git
 ```
 3.  Create and activate conda environment:
 ```bash
-cd fuzzy-kmer-seq-aligner
 conda env create -f environment.yml
 conda activate fuzzy-kmer-seq-aligner
 ```

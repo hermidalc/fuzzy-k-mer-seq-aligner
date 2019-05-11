@@ -36,6 +36,7 @@ def build_fuzzy_map(str seq, args):
 
 def calc_similarity_score(str query, str target, str seq_type, str algo,
                           dict aligners):
+    cdef str c
     cdef float score = 0
     cdef float perfect_score
     if algo == 'levenshtein':
@@ -59,14 +60,17 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
     cdef list query_align_parts = []
     cdef list match_align_parts = []
     cdef list target_align_parts = []
+    cdef list match_align_gap_chrs
     cdef str query_align_gap, match_align_gap, target_align_gap
     cdef str query_gap, query_kmer, query_chr
     cdef str target_gap, target_kmer, target_chr
     cdef str query_alignment, match_alignment, target_alignment
+    cdef str c
     cdef unsigned int query_seq_pos, query_seq_start_pos
     cdef unsigned int target_seq_pos, target_seq_start_pos
     cdef unsigned int num_idents = 0
     cdef unsigned int num_gaps = 0
+    cdef unsigned int i
     cdef int query_gap_size, target_gap_size, g
     cdef int raw_score = 0
     cdef int query_seq_curr_pos = -1
@@ -94,6 +98,12 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
                         gap_alignment).split('\n')[:3]
                     match_align_gap = match_align_gap.replace('X', ' ')
                     match_align_gap = match_align_gap.replace('-', ' ')
+                    if args.seq_type == 'protein':
+                        match_align_gap_chrs = list(match_align_gap)
+                        for i, c in enumerate(match_align_gap_chrs):
+                            if c == '|':
+                                match_align_gap_chrs[i] = query_align_gap[i]
+                        match_align_gap = ''.join(match_align_gap_chrs)
                     query_align_parts.append(query_align_gap)
                     match_align_parts.append(match_align_gap)
                     target_align_parts.append(target_align_gap)
@@ -141,7 +151,10 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
                 raw_score += aligners['global'].substitution_matrix[
                     (query_chr, target_chr)]
                 if query_chr == target_chr:
-                    match_align_parts.append('|')
+                    match_align_parts.append(query_chr)
+                elif (aligners['global'].substitution_matrix[
+                        (query_chr, target_chr)] > 0):
+                    match_align_parts.append('+')
                 else:
                     match_align_parts.append(' ')
     query_alignment = ''.join(query_align_parts)
@@ -151,6 +164,11 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
             (args.match_score, args.mismatch_score) in KA_NA_ROUND_DOWN):
         raw_score = max(raw_score - 1, 0)
     bit_score = (args.ka_gapped_l * raw_score - log(args.ka_gapped_k)) / log(2)
+    if args.seq_type in ('dna', 'rna'):
+        num_ids = match_alignment.count('|')
+    else:
+        num_ids = np.sum([match_alignment.count(c)
+                          for c in args.seq_abc.letters])
     return {'query': query_alignment,
             'match': match_alignment,
             'target': target_alignment,
@@ -162,7 +180,8 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
             'bit_score': bit_score,
             'e_value': len(query_seq) * len(target_seq) / (2 ** bit_score),
             'p_value': 2 ** (-bit_score),
-            'num_ids': match_alignment.count('|'),
+            'num_ids': num_ids,
+            'num_pos': match_alignment.count('+'),
             'num_gaps': (query_alignment.count('-') +
                          target_alignment.count('-')),
             'strand': strand}
@@ -218,7 +237,7 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
     cdef dict alignment
     cdef str strand
     cdef list alignments, alignment_grp, alignment_grp_idxs
-    cdef unsigned int i, j
+    cdef unsigned int i, j, k
     for strand, alignments in query_kmer_alignments.items():
         alignments.sort(key=itemgetter(0, 1))
         for i in range(len(alignments)):
@@ -226,9 +245,6 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                 alignment_grp = [tuple(alignments[i][:2])]
                 alignment_grp_idxs = [i]
                 if i + 1 == len(alignments):
-                    # flag alignments in group
-                    for idx in alignment_grp_idxs:
-                        alignments[idx][2] = True
                     alignment = build_alignment(
                         alignment_grp, query_seq, target_seq, strand,
                         aligners, args)
@@ -256,8 +272,8 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                                 alignment_grp_idxs.append(j)
                         else:
                             # flag alignments in group
-                            for idx in alignment_grp_idxs:
-                                alignments[idx][2] = True
+                            for k in alignment_grp_idxs:
+                                alignments[k][2] = True
                             alignment = build_alignment(
                                 alignment_grp, query_seq, target_seq, strand,
                                 aligners, args)

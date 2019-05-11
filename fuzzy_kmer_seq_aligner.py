@@ -61,11 +61,11 @@ for file in (args.query_seq, args.target_seq):
 
 # alphabet
 if args.seq_type == 'dna':
-    seq_alphabet = IUPACAmbiguousDNA()
+    args.seq_abc = IUPACAmbiguousDNA()
 elif args.seq_type == 'rna':
-    seq_alphabet = IUPACAmbiguousRNA()
+    args.seq_abc = IUPACAmbiguousRNA()
 else:
-    seq_alphabet = ExtendedIUPACProtein()
+    args.seq_abc = ExtendedIUPACProtein()
 
 # Aligners setup
 aligners = {'global': PairwiseAligner(), 'local': None}
@@ -136,7 +136,7 @@ if args.align_fmt == 'pairwise':
     ''')
     pw_section_header_fmt = dedent('''\
     Score = {bits:.1f} bits ({raw}), Expect = {eval:{efmt}}
-    Identities = {ids}/{idt} ({idp:.0f}%), Gaps = {gaps}/{gapt} ({gapp:.0f}%)\
+    Identities = {ids}/{tot} ({idp:.0f}%), {pos}Gaps = {gaps}/{tot} ({gapp:.0f}%)\
     {strand}
     ''')
     pw_alignment_fmt = dedent('''\
@@ -165,17 +165,25 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
             if args.align_fmt == 'pairwise':
                 efmt = '.3' + ('e' if alignment['e_value'] < 1e-3 else 'f')
                 idp = alignment['num_ids'] / len(query_seq) * 100
+                posp = alignment['num_pos'] / len(query_seq) * 100
                 gapp = alignment['num_gaps'] / len(query_seq) * 100
                 if args.seq_type == 'dna':
                     strand = '\nStrand = Plus/' + alignment['strand']
                 else:
                     strand = ''
+                if args.seq_type == 'protein':
+                    positives = (
+                        'Positives = {pos}/{tot} ({posp:.0f}%), '.format(
+                            pos=alignment['num_pos'], tot=len(query_seq),
+                            posp=posp))
+                else:
+                    positives = ''
                 print(pw_section_header_fmt.format(
                     bits=alignment['bit_score'], raw=alignment['raw_score'],
                     eval=alignment['e_value'], efmt=efmt,
-                    ids=alignment['num_ids'], idt=len(query_seq), idp=idp,
-                    gaps=alignment['num_gaps'], gapt=len(query_seq),
-                    gapp=gapp, strand=strand))
+                    ids=alignment['num_ids'], tot=len(query_seq), idp=idp,
+                    gaps=alignment['num_gaps'], gapp=gapp, strand=strand,
+                    pos=positives))
                 mpad = ' ' * (8 + lenpad + 3)
                 for q, m, t in zip(
                         range(alignment['qstart'], alignment['qend'] + 1,

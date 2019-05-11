@@ -7,6 +7,7 @@ cimport numpy as np
 from operator import itemgetter
 from Bio.Seq import reverse_complement
 from Levenshtein import distance, hamming
+from ka_config import KA_NA_ROUND_DOWN
 
 
 # iterate over kmers in a sequence
@@ -146,6 +147,9 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
     query_alignment = ''.join(query_align_parts)
     match_alignment = ''.join(match_align_parts)
     target_alignment = ''.join(target_align_parts)
+    if (args.seq_type in ('dna', 'rna') and raw_score % 2 != 0 and
+            (args.match_score, args.mismatch_score) in KA_NA_ROUND_DOWN):
+        raw_score = max(raw_score - 1, 0)
     bit_score = (args.ka_gapped_l * raw_score - log(args.ka_gapped_k)) / log(2)
     return {'query': query_alignment,
             'match': match_alignment,

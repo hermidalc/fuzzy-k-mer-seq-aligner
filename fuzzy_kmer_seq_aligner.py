@@ -8,6 +8,7 @@ from Bio.Align import PairwiseAligner
 from Bio.Alphabet.IUPAC import (ExtendedIUPACProtein, IUPACAmbiguousDNA,
                                 IUPACAmbiguousRNA)
 from Bio.SeqIO.FastaIO import SimpleFastaParser
+from ka_config import KA_PARAMS
 import pyximport
 pyximport.install(inplace=True)
 from functions import build_fuzzy_map, pairwise_align
@@ -66,14 +67,6 @@ elif args.seq_type == 'rna':
 else:
     seq_alphabet = ExtendedIUPACProtein()
 
-# Karlin-Altschul statistics
-if args.seq_type in ('dna', 'rna'):
-    args.ka_gapped_l = 1.280
-    args.ka_gapped_k = 0.460
-else:
-    args.ka_gapped_l = 0.267
-    args.ka_gapped_k = 0.041
-
 # Aligners setup
 aligners = {'global': PairwiseAligner(), 'local': None}
 aligners['global'].mode = 'global'
@@ -104,6 +97,32 @@ if args.sim_algo == 'smith-waterman':
         aligners['local'].substitution_matrix = sub_matrix
     aligners['local'].open_gap_score = args.open_gap_score
     aligners['local'].extend_gap_score = args.extend_gap_score
+
+# Karlin-Altschul parameter values
+if args.seq_type in ('dna', 'rna'):
+    if ((args.match_score, args.mismatch_score) in KA_PARAMS['na'] and
+            (abs(args.open_gap_score), abs(args.extend_gap_score)) in
+            KA_PARAMS['na'][(args.match_score, args.mismatch_score)]):
+        args.ka_gapped_l = KA_PARAMS['na'][
+            (args.match_score, args.mismatch_score)][
+                (abs(args.open_gap_score), abs(args.extend_gap_score))][0]
+        args.ka_gapped_k = KA_PARAMS['na'][
+            (args.match_score, args.mismatch_score)][
+                (abs(args.open_gap_score), abs(args.extend_gap_score))][1]
+    else:
+        args.ka_gapped_l = 1.280
+        args.ka_gapped_k = 0.460
+else:
+    if (args.sub_matrix in KA_PARAMS['aa'] and
+            (abs(args.open_gap_score), abs(args.extend_gap_score)) in
+            KA_PARAMS['aa'][args.sub_matrix]):
+        args.ka_gapped_l = KA_PARAMS['aa'][args.sub_matrix][
+            (abs(args.open_gap_score), abs(args.extend_gap_score))][0]
+        args.ka_gapped_k = KA_PARAMS['aa'][args.sub_matrix][
+            (abs(args.open_gap_score), abs(args.extend_gap_score))][1]
+    else:
+        args.ka_gapped_l = 0.267
+        args.ka_gapped_k = 0.041
 
 if args.align_sort in ('e_value', 'q_start', 's_start'):
     align_sort_rev = False

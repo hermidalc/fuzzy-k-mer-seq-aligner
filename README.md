@@ -2,7 +2,7 @@
 
 ## Installation
 
-1.  Install latest (Anaconda for Python 3.x)[https://www.anaconda.com/distribution/]{:target="_blank" rel="noopener"} or (Miniconda for Python 3.x)[https://docs.conda.io/en/latest/miniconda.html]{:target="_blank" rel="noopener"}
+1.  Install latest [Anaconda for Python 3.x](https://www.anaconda.com/distribution/){:target="_blank" rel="noopener"} or [Miniconda for Python 3.x](https://docs.conda.io/en/latest/miniconda.html){:target="_blank" rel="noopener"}
 2. Update ``conda`` to latest:
 ```bash
 conda update -n base conda

@@ -201,7 +201,7 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                         sstar=sstar, mpad=mpad,
                         sbjct=alignment['target'][m:(m + pwa_width)],
                         send=send))
-            if i == args.max_aligns:
+            if i + 1 == args.max_aligns:
                 break
     del fuzzy_map
 target_seq_fh.close()

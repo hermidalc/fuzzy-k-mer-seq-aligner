@@ -244,13 +244,7 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
             if not alignments[i][2]:
                 alignment_grp = [tuple(alignments[i][:2])]
                 alignment_grp_idxs = [i]
-                if i + 1 == len(alignments):
-                    alignment = build_alignment(
-                        alignment_grp, query_seq, target_seq, strand,
-                        aligners, args)
-                    if alignment['e_value'] <= args.expect_thres:
-                        yield alignment
-                else:
+                if i + 1 < len(alignments):
                     for j in range(i + 1, len(alignments)):
                         if (alignments[j][0] - (alignment_grp[-1][0] + args.k)
                                 <= args.max_kmer_gap):
@@ -280,3 +274,9 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                             if alignment['e_value'] <= args.expect_thres:
                                 yield alignment
                             break
+                else:
+                    alignment = build_alignment(
+                        alignment_grp, query_seq, target_seq, strand,
+                        aligners, args)
+                    if alignment['e_value'] <= args.expect_thres:
+                        yield alignment

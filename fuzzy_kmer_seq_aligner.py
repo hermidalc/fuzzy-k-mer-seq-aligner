@@ -25,7 +25,7 @@ parser.add_argument('--seq-type', '-st', type=str, required=True,
 parser.add_argument('--sim-algo', '-sa', type=str, default='smith-waterman',
                     choices=['levenshtein', 'hamming', 'smith-waterman'],
                     help='string similarity algorithm')
-parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.6',
+parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.5',
                     help='fuzzy membership similarity cutoff')
 parser.add_argument('--match-score', '-ms', type=float, default='2',
                     help='match score')

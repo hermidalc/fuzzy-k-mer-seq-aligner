@@ -101,8 +101,8 @@ if args.sim_algo == 'smith-waterman':
 
 # Karlin-Altschul parameter values
 if args.seq_type in ('dna', 'rna'):
-    if ((args.match_score, args.mismatch_score) in KA_PARAMS['na'] and
-            (abs(args.open_gap_score), abs(args.extend_gap_score)) in
+    if ((args.match_score, args.mismatch_score) in KA_PARAMS['na']
+            and (abs(args.open_gap_score), abs(args.extend_gap_score)) in
             KA_PARAMS['na'][(args.match_score, args.mismatch_score)]):
         args.ka_gapped_l = KA_PARAMS['na'][
             (args.match_score, args.mismatch_score)][
@@ -114,8 +114,8 @@ if args.seq_type in ('dna', 'rna'):
         args.ka_gapped_l = 1.280
         args.ka_gapped_k = 0.460
 else:
-    if (args.sub_matrix in KA_PARAMS['aa'] and
-            (abs(args.open_gap_score), abs(args.extend_gap_score)) in
+    if (args.sub_matrix in KA_PARAMS['aa']
+            and (abs(args.open_gap_score), abs(args.extend_gap_score)) in
             KA_PARAMS['aa'][args.sub_matrix]):
         args.ka_gapped_l = KA_PARAMS['aa'][args.sub_matrix][
             (abs(args.open_gap_score), abs(args.extend_gap_score))][0]
@@ -193,16 +193,17 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                         pwa_width = args.pwa_width
                     else:
                         pwa_width = len(alignment['match']) - j
-                    qend_line = (qstart_line + pwa_width - 1 -
-                                 alignment['query'][j:(j + pwa_width)]
+                    qend_line = (qstart_line + pwa_width - 1
+                                 - alignment['query'][j:(j + pwa_width)]
                                  .count('-'))
-                    send_line = (sstart_line + pwa_width - 1 -
-                                 alignment['target'][j:(j + pwa_width)]
-                                 .count('-'))
-                    if alignment['strand'] == 'Minus':
-                        sstart_temp = sstart_line
-                        sstart_line = send_line
-                        send_line = sstart_temp
+                    if alignment['strand'] == 'Plus':
+                        send_line = sstart_line + pwa_width - 1
+                        send_line -= (
+                            alignment['target'][j:(j + pwa_width)].count('-'))
+                    else:
+                        send_line = sstart_line - pwa_width + 1
+                        send_line += (
+                            alignment['target'][j:(j + pwa_width)].count('-'))
                     print(pw_alignment_fmt.format(
                         qsta=qstart_line, lenpad=lenpad,
                         query=alignment['query'][j:(j + pwa_width)],
@@ -212,7 +213,10 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                         sbjct=alignment['target'][j:(j + pwa_width)],
                         send=send_line))
                     qstart_line = qend_line + 1
-                    sstart_line = send_line + 1
+                    if alignment['strand'] == 'Plus':
+                        sstart_line = send_line + 1
+                    else:
+                        sstart_line = send_line - 1
             if i + 1 == args.max_aligns:
                 break
     del fuzzy_map

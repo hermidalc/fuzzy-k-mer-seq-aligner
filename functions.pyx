@@ -84,10 +84,13 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
                 target_seq_start_pos = target_seq_curr_pos
                 query_seq_start_pos = query_seq_curr_pos
             elif target_gap_size > 0:
-                target_gap = target_seq[target_seq_curr_pos:(
-                    target_seq_curr_pos + target_gap_size)]
-                if strand == 'Minus':
-                    target_gap = reverse_complement(target_gap)
+                if strand == 'Plus':
+                    target_gap = target_seq[
+                        target_seq_curr_pos:target_seq_pos]
+                else:
+                    target_gap = reverse_complement(target_seq[
+                        (len(target_seq) - target_seq_pos):
+                        (len(target_seq) - target_seq_curr_pos)])
                 if query_gap_size > 0:
                     query_gap = query_seq[query_seq_curr_pos:(
                         query_seq_curr_pos + query_gap_size)]
@@ -140,9 +143,13 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
             query_seq_start_pos = query_seq_pos
         target_seq_curr_pos = target_seq_pos + args.k
         query_seq_curr_pos = query_seq_pos + args.k
-        target_kmer = target_seq[target_seq_start_pos:target_seq_curr_pos]
-        if strand == 'Minus':
-            target_kmer = reverse_complement(target_kmer)
+        if strand == 'Plus':
+            target_kmer = target_seq[
+                target_seq_start_pos:target_seq_curr_pos]
+        else:
+            target_kmer = reverse_complement(target_seq[
+                (len(target_seq) - target_seq_curr_pos):
+                (len(target_seq) - target_seq_start_pos)])
         query_kmer = query_seq[query_seq_start_pos:query_seq_curr_pos]
         query_align_parts.append(query_kmer)
         target_align_parts.append(target_kmer)
@@ -167,6 +174,12 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
     query_alignment = ''.join(query_align_parts)
     match_alignment = ''.join(match_align_parts)
     target_alignment = ''.join(target_align_parts)
+    if strand == 'Plus':
+        tstart = alignment_grp[0][0] + 1
+        tend = alignment_grp[-1][0] + args.k
+    else:
+        tstart = len(target_seq) - alignment_grp[0][0]
+        tend = len(target_seq) - (alignment_grp[-1][0] + args.k) + 1
     if (args.seq_type in ('dna', 'rna') and raw_score % 2 != 0 and
             (args.match_score, args.mismatch_score) in KA_NA_ROUND_DOWN):
         raw_score = max(raw_score - 1, 0)
@@ -181,8 +194,8 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
             'target': target_alignment,
             'qstart': alignment_grp[0][1] + 1,
             'qend': alignment_grp[-1][1] + args.k,
-            'tstart': alignment_grp[0][0] + 1,
-            'tend': alignment_grp[-1][0] + args.k,
+            'tstart': tstart,
+            'tend': tend,
             'raw_score': raw_score,
             'bit_score': bit_score,
             'e_value': len(query_seq) * len(target_seq) / (2 ** bit_score),
@@ -239,7 +252,8 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                         for target_kmer_pos in (fuzzy_map[query_kmer_rc_exact]
                                                 [target_kmer_fuzzy]):
                             query_kmer_alignments['Minus'].append(
-                                [target_kmer_pos, query_kmer_pos, False])
+                                [len(target_seq) - (target_kmer_pos + args.k),
+                                 query_kmer_pos, False])
     # group query kmer alignments
     cdef dict alignment
     cdef str strand
@@ -272,11 +286,11 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                             alignment_grp_idxs.append(j)
                     else:
                         break
-                # flag alignments in group
-                for k in alignment_grp_idxs:
-                    alignments[k][2] = True
-                alignment = build_alignment(
-                    alignment_grp, query_seq, target_seq, strand,
-                    aligners, args)
+                alignment = build_alignment(alignment_grp, query_seq,
+                                            target_seq, strand, aligners,
+                                            args)
                 if alignment['e_value'] <= args.expect_thres:
                     yield alignment
+                # flag alignments in group as used
+                for k in alignment_grp_idxs:
+                    alignments[k][2] = True

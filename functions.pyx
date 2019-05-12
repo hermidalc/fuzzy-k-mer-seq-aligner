@@ -244,39 +244,32 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
             if not alignments[i][2]:
                 alignment_grp = [tuple(alignments[i][:2])]
                 alignment_grp_idxs = [i]
-                if i + 1 < len(alignments):
-                    for j in range(i + 1, len(alignments)):
-                        if (alignments[j][0] - (alignment_grp[-1][0] + args.k)
-                                <= args.max_kmer_gap):
-                            if ((alignments[j][0] < alignment_grp[-1][0]
-                                 + args.k) or
-                                    (alignments[j][1] < alignment_grp[-1][1]
-                                     + args.k)):
-                                if (alignments[j][0] -
-                                    alignment_grp[-1][0] ==
-                                        alignments[j][1] -
-                                        alignment_grp[-1][1]):
-                                    alignment_grp.append(
-                                        tuple(alignments[j][:2]))
-                                    alignment_grp_idxs.append(j)
-                            elif (0 < alignments[j][1] -
-                                  (alignment_grp[-1][1] + args.k)
-                                  <= args.max_kmer_gap):
-                                alignment_grp.append(tuple(alignments[j][:2]))
+                for j in range(i + 1, len(alignments)):
+                    if (alignments[j][0] - (alignment_grp[-1][0] + args.k)
+                            <= args.max_kmer_gap):
+                        if ((alignments[j][0] < alignment_grp[-1][0]
+                             + args.k) or
+                                (alignments[j][1] < alignment_grp[-1][1]
+                                 + args.k)):
+                            if (alignments[j][0] -
+                                alignment_grp[-1][0] ==
+                                    alignments[j][1] -
+                                    alignment_grp[-1][1]):
+                                alignment_grp.append(
+                                    tuple(alignments[j][:2]))
                                 alignment_grp_idxs.append(j)
-                        else:
-                            # flag alignments in group
-                            for k in alignment_grp_idxs:
-                                alignments[k][2] = True
-                            alignment = build_alignment(
-                                alignment_grp, query_seq, target_seq, strand,
-                                aligners, args)
-                            if alignment['e_value'] <= args.expect_thres:
-                                yield alignment
-                            break
-                else:
-                    alignment = build_alignment(
-                        alignment_grp, query_seq, target_seq, strand,
-                        aligners, args)
-                    if alignment['e_value'] <= args.expect_thres:
-                        yield alignment
+                        elif (0 < alignments[j][1] -
+                              (alignment_grp[-1][1] + args.k)
+                              <= args.max_kmer_gap):
+                            alignment_grp.append(tuple(alignments[j][:2]))
+                            alignment_grp_idxs.append(j)
+                    else:
+                        break
+                # flag alignments in group
+                for k in alignment_grp_idxs:
+                    alignments[k][2] = True
+                alignment = build_alignment(
+                    alignment_grp, query_seq, target_seq, strand,
+                    aligners, args)
+                if alignment['e_value'] <= args.expect_thres:
+                    yield alignment

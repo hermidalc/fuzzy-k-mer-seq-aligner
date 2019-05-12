@@ -96,13 +96,20 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
                     raw_score += gap_alignment.score
                     query_align_gap, match_align_gap, target_align_gap = str(
                         gap_alignment).split('\n')[:3]
-                    match_align_gap = match_align_gap.replace('X', ' ')
-                    match_align_gap = match_align_gap.replace('-', ' ')
                     if args.seq_type == 'protein':
                         match_align_gap_chrs = list(match_align_gap)
                         for i, c in enumerate(match_align_gap_chrs):
                             if c == '|':
                                 match_align_gap_chrs[i] = query_align_gap[i]
+                            elif c == 'X':
+                                if (aligners['global'].substitution_matrix[
+                                        (query_align_gap[i],
+                                         target_align_gap[i]) ] > 0):
+                                    match_align_gap_chrs[i] = '+'
+                                else:
+                                    match_align_gap_chrs[i] = ' '
+                            elif c == '-':
+                                match_align_gap_chrs[i] = ' '
                         match_align_gap = ''.join(match_align_gap_chrs)
                     query_align_parts.append(query_align_gap)
                     match_align_parts.append(match_align_gap)

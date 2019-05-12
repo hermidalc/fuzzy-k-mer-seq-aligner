@@ -13,6 +13,7 @@ import pyximport
 pyximport.install(inplace=True)
 from functions import build_fuzzy_map, pairwise_align
 
+
 parser = ArgumentParser()
 parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
                     help='fuzzy k-mer seed pattern')
@@ -140,9 +141,9 @@ if args.align_fmt == 'pairwise':
     {strand}
     ''')
     pw_alignment_fmt = dedent('''\
-    Query   {qstar:<{lenpad}}   {query}   {qend}
+    Query   {qsta:<{lenpad}}   {query}   {qend}
     {mpad}{match}
-    Sbjct   {sstar:<{lenpad}}   {sbjct}   {send}
+    Sbjct   {ssta:<{lenpad}}   {sbjct}   {send}
     ''')
 
 args.k = len(args.fuzzy_seed)
@@ -185,30 +186,33 @@ for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
                     gaps=alignment['num_gaps'], gapp=gapp, strand=strand,
                     pos=positives))
                 mpad = ' ' * (8 + lenpad + 3)
-                for q, m, t in zip(
-                        range(alignment['qstart'], alignment['qend'] + 1,
-                              args.pwa_width),
-                        range(0, len(alignment['match']), args.pwa_width),
-                        range(alignment['tstart'], alignment['tend'] + 1,
-                              args.pwa_width)):
-                    if m + args.pwa_width < len(alignment['match']):
+                qstart_line = alignment['qstart']
+                sstart_line = alignment['tstart']
+                for j in range(0, len(alignment['match']), args.pwa_width):
+                    if j + args.pwa_width < len(alignment['match']):
                         pwa_width = args.pwa_width
                     else:
-                        pwa_width = len(alignment['match'])
-                    if alignment['strand'] == 'Plus':
-                        sstar = t + 1
-                        send = t + pwa_width
-                    else:
-                        sstar = t + pwa_width
-                        send = t + 1
+                        pwa_width = len(alignment['match']) - j
+                    qend_line = (qstart_line + pwa_width - 1 -
+                                 alignment['query'][j:(j + pwa_width)]
+                                 .count('-'))
+                    send_line = (sstart_line + pwa_width - 1 -
+                                 alignment['target'][j:(j + pwa_width)]
+                                 .count('-'))
+                    if alignment['strand'] == 'Minus':
+                        sstart_temp = sstart_line
+                        sstart_line = send_line
+                        send_line = sstart_temp
                     print(pw_alignment_fmt.format(
-                        qstar=q + 1, lenpad=lenpad,
-                        query=alignment['query'][m:(m + pwa_width)],
-                        qend=q + pwa_width,
-                        match=alignment['match'][m:(m + pwa_width)],
-                        sstar=sstar, mpad=mpad,
-                        sbjct=alignment['target'][m:(m + pwa_width)],
-                        send=send))
+                        qsta=qstart_line, lenpad=lenpad,
+                        query=alignment['query'][j:(j + pwa_width)],
+                        qend=qend_line,
+                        match=alignment['match'][j:(j + pwa_width)],
+                        ssta=sstart_line, mpad=mpad,
+                        sbjct=alignment['target'][j:(j + pwa_width)],
+                        send=send_line))
+                    qstart_line = qend_line + 1
+                    sstart_line = send_line + 1
             if i + 1 == args.max_aligns:
                 break
     del fuzzy_map

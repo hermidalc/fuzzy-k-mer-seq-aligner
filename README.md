@@ -31,5 +31,5 @@ Under Linux and Mac OSX install ``blast`` in your activated conda environment:
 ```bash
 conda install blast
 ```
-Under Windows you must install BLAST+ manually from the
-<a href="ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST" target="_blank">NCBI BLAST FTP</a> site.
+Under Windows you must downlooad and install BLAST+ manually from the NCBI
+FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST)

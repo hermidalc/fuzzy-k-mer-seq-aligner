@@ -5,7 +5,6 @@ channels:
   - bioconda
 dependencies:
   - biopython
-  - blast
   - cython
   - numpy
   - python

@@ -19,8 +19,12 @@ parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
                     help='fuzzy k-mer seed pattern')
 parser.add_argument('--query-seq', '-qs', type=str, required=True,
                     help='query FASTA sequence file')
+parser.add_argument('--query-loc', '-ql', type=int, nargs=2,
+                    help='query sequence start-stop')
 parser.add_argument('--target-seq', '-ts', type=str, required=True,
                     help='target FASTA sequence file')
+parser.add_argument('--target-loc', '-tl', type=int, nargs=2,
+                    help='target sequence start-stop')
 parser.add_argument('--seq-type', '-st', type=str, required=True,
                     choices=['dna', 'rna', 'protein'], help='sequence type')
 parser.add_argument('--sim-algo', '-sa', type=str, default='smith-waterman',
@@ -152,8 +156,14 @@ args.seed_fuzzy_idxs = [i for i, c in enumerate(args.fuzzy_seed) if c == '*']
 query_seq_fh = open(args.query_seq, 'r')
 target_seq_fh = open(args.target_seq, 'r')
 for target_seq_title, target_seq in SimpleFastaParser(target_seq_fh):
+    if args.target_loc:
+        target_seq = target_seq[
+            (args.target_loc[0] - 1):(args.target_loc[1] - 1)]
     fuzzy_map = build_fuzzy_map(target_seq, args)
     for query_seq_title, query_seq in SimpleFastaParser(query_seq_fh):
+        if args.query_loc:
+            query_seq = query_seq[
+                (args.query_loc[0] - 1):(args.query_loc[1] - 1)]
         if args.align_fmt == 'pairwise':
             lenpad = len(str(max(len(query_seq), len(target_seq))))
             print(pw_header_fmt.format(

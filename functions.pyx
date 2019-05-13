@@ -99,7 +99,10 @@ def build_alignment(list alignment_grp, str query_seq, str target_seq,
                     raw_score += gap_alignment.score
                     query_align_gap, match_align_gap, target_align_gap = str(
                         gap_alignment).split('\n')[:3]
-                    if args.seq_type == 'protein':
+                    if args.seq_type in ('dna', 'rna'):
+                        match_align_gap = match_align_gap.replace('X', ' ')
+                        match_align_gap = match_align_gap.replace('-', ' ')
+                    else:
                         match_align_gap_chrs = list(match_align_gap)
                         for i, c in enumerate(match_align_gap_chrs):
                             if c == '|':

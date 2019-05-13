@@ -103,6 +103,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# snakemake
+.snakemake/
+
 # custom dirs and file types
 data/
 results/

@@ -51,7 +51,7 @@ parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
                     choices=['tabular', 'pairwise'],
                     help='alignment output format')
 parser.add_argument('--align-sort', '-as', type=str, default='e_value',
-                    choices=['e_value', 'score', 'pct_id', 'q_start',
+                    choices=['e_value', 'bit_score', 'pct_id', 'q_start',
                              's_start'],
                     help='alignment output sort')
 parser.add_argument('--max-aligns', '-ma', type=int, default='50',
@@ -131,7 +131,7 @@ else:
 
 if args.align_sort in ('e_value', 'q_start', 's_start'):
     align_sort_rev = False
-elif args.align_sort in ('score', 'pct_id'):
+elif args.align_sort in ('bit_score', 'pct_id'):
     align_sort_rev = True
 
 if args.align_fmt == 'pairwise':

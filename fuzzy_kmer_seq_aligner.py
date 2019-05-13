@@ -48,7 +48,7 @@ parser.add_argument('--max-kmer-gap', '-mg', type=int, default='30',
 parser.add_argument('--expect-thres', '-et', type=float, default='10',
                     help='expect value threshold')
 parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
-                    choices=['tabular', 'pairwise'],
+                    choices=['pairwise', 'tabular'],
                     help='alignment output format')
 parser.add_argument('--align-sort', '-as', type=str, default='e_value',
                     choices=['e_value', 'bit_score', 'pct_id', 'q_start',

@@ -33,3 +33,6 @@ conda install blast
 ```
 Under Windows you must downlooad and install BLAST+ manually from the NCBI
 FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST)
+
+To run all examples simply type ``snakemake all`` and to clean up example
+files and results type ``snakemake clean``

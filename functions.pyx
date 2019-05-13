@@ -268,16 +268,16 @@ def pairwise_align(dict fuzzy_map, str query_seq, str target_seq,
                 for j in range(i + 1, len(alignments)):
                     if (alignments[j][0] - (alignment_grp[-1][0] + args.k)
                             <= args.max_kmer_gap):
-                        if ((alignments[j][0] < alignment_grp[-1][0]
-                             + args.k) or
-                                (alignments[j][1] < alignment_grp[-1][1]
-                                 + args.k)):
+                        if ((alignments[j][0] < alignment_grp[-1][0] + args.k)
+                                or (alignments[j][1] < alignment_grp[-1][1]
+                                    + args.k)):
                             if (alignments[j][0] - alignment_grp[-1][0] ==
                                     alignments[j][1] - alignment_grp[-1][1]):
                                 alignment_grp.append(tuple(alignments[j][:2]))
                                 alignment_grp_idxs.append(j)
-                        elif (0 < alignments[j][1] - (alignment_grp[-1][1] + args.k)
-                                <= args.max_kmer_gap):
+                        elif (0 < alignments[j][1] -
+                              (alignment_grp[-1][1] + args.k)
+                              <= args.max_kmer_gap):
                             alignment_grp.append(tuple(alignments[j][:2]))
                             alignment_grp_idxs.append(j)
                     else:

@@ -2,66 +2,66 @@
 
 ```bash
 $ ./fuzzy_kmer_seq_aligner.py --help
-usage: fuzzy_kmer_seq_aligner.py [-h] --fuzzy-seed FUZZY_SEED
-                                 --query-seq QUERY_SEQ
-                                 [--query-loc QUERY_LOC QUERY_LOC]
-                                 --target-seq TARGET_SEQ
-                                 [--target-loc TARGET_LOC TARGET_LOC]
-                                 --seq-type {dna,rna,protein}
-                                 [--sim-algo {levenshtein,hamming,smith-waterman}]
-                                 [--sim-cutoff SIM_CUTOFF]
-                                 [--match-score MATCH_SCORE]
-                                 [--mismatch-score MISMATCH_SCORE]
-                                 [--open-gap-score OPEN_GAP_SCORE]
-                                 [--extend-gap-score EXTEND_GAP_SCORE]
-                                 [--sub-matrix SUB_MATRIX]
-                                 [--max-kmer-gap MAX_KMER_GAP]
-                                 [--expect-thres EXPECT_THRES]
-                                 [--align-fmt {pairwise,tabular}]
-                                 [--align-sort {e_value,bit_score,pct_id,q_start,s_start}]
-                                 [--max-aligns MAX_ALIGNS]
-                                 [--pwa-width PWA_WIDTH]
+usage: fuzzy_kmer_seq_aligner.py [-h] -fs FUZZY_SEED
+                                 -st {dna,rna,protein}
+                                 -qs QUERY_SEQ
+                                 -ts TARGET_SEQ
+                                 [-ql QUERY_LOC QUERY_LOC]
+                                 [-tl TARGET_LOC TARGET_LOC]
+                                 [-sa {levenshtein,hamming,smith-waterman}]
+                                 [-sc SIM_CUTOFF]
+                                 [-ms MATCH_SCORE]
+                                 [-ss MISMATCH_SCORE]
+                                 [-og OPEN_GAP_SCORE]
+                                 [-eg EXTEND_GAP_SCORE]
+                                 [-sm SUB_MATRIX]
+                                 [-mg MAX_KMER_GAP]
+                                 [-et EXPECT_THRES]
+                                 [-af {pairwise,tabular}]
+                                 [-as {e_value,bit_score,pct_id,q_start,s_start}]
+                                 [-ma MAX_ALIGNS]
+                                 [-pw PWA_WIDTH]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --fuzzy-seed FUZZY_SEED, -fs FUZZY_SEED
+  -fs FUZZY_SEED, --fuzzy-seed FUZZY_SEED
                         fuzzy k-mer seed pattern
-  --query-seq QUERY_SEQ, -qs QUERY_SEQ
-                        query FASTA sequence file
-  --query-loc QUERY_LOC QUERY_LOC, -ql QUERY_LOC QUERY_LOC
-                        query sequence start-stop
-  --target-seq TARGET_SEQ, -ts TARGET_SEQ
-                        target FASTA sequence file
-  --target-loc TARGET_LOC TARGET_LOC, -tl TARGET_LOC TARGET_LOC
-                        target sequence start-stop
-  --seq-type {dna,rna,protein}, -st {dna,rna,protein}
+  -st {dna,rna,protein}, --seq-type {dna,rna,protein}
                         sequence type
-  --sim-algo {levenshtein,hamming,smith-waterman}, -sa {levenshtein,hamming,smith-waterman}
+  -qs QUERY_SEQ, --query-seq QUERY_SEQ
+                        query FASTA sequence file
+  -ts TARGET_SEQ, --target-seq TARGET_SEQ
+                        target FASTA sequence file
+  -ql QUERY_LOC QUERY_LOC, --query-loc QUERY_LOC QUERY_LOC
+                        query sequence start stop
+  -tl TARGET_LOC TARGET_LOC, --target-loc TARGET_LOC TARGET_LOC
+                        target sequence start stop
+  -sa {levenshtein,hamming,smith-waterman}, --sim-algo {levenshtein,hamming,smith-waterman}
                         string similarity algorithm
-  --sim-cutoff SIM_CUTOFF, -sc SIM_CUTOFF
+  -sc SIM_CUTOFF, --sim-cutoff SIM_CUTOFF
                         fuzzy membership similarity cutoff
-  --match-score MATCH_SCORE, -ms MATCH_SCORE
+  -ms MATCH_SCORE, --match-score MATCH_SCORE
                         match score
-  --mismatch-score MISMATCH_SCORE, -ss MISMATCH_SCORE
+  -ss MISMATCH_SCORE, --mismatch-score MISMATCH_SCORE
                         mismatch score
-  --open-gap-score OPEN_GAP_SCORE, -og OPEN_GAP_SCORE
+  -og OPEN_GAP_SCORE, --open-gap-score OPEN_GAP_SCORE
                         open gap score
-  --extend-gap-score EXTEND_GAP_SCORE, -eg EXTEND_GAP_SCORE
+  -eg EXTEND_GAP_SCORE, --extend-gap-score EXTEND_GAP_SCORE
                         extend gap score
-  --sub-matrix SUB_MATRIX, -sm SUB_MATRIX
+  -sm SUB_MATRIX, --sub-matrix SUB_MATRIX
                         substitution matrix (any Biopython MatrixInfo matrix
                         name)
-  --max-kmer-gap MAX_KMER_GAP, -mg MAX_KMER_GAP
+  -mg MAX_KMER_GAP, --max-kmer-gap MAX_KMER_GAP
                         maximum gap size when grouping kmers
-  --expect-thres EXPECT_THRES, -et EXPECT_THRES
+  -et EXPECT_THRES, --expect-thres EXPECT_THRES
                         expect value threshold
-  --align-fmt {tabular,pairwise}, -af {tabular,pairwise}
+  -af {pairwise,tabular}, --align-fmt {pairwise,tabular}
                         alignment output format
-  --align-sort {e_value,bit_score,pct_id,q_start,s_start}, -as {e_value,bit_score,pct_id,q_start,s_start}
+  -as {e_value,bit_score,pct_id,q_start,s_start}, --align-sort {e_value,bit_score,pct_id,q_start,s_start}
                         alignment output sort
-  --max-aligns MAX_ALIGNS, -ma MAX_ALIGNS
+  -ma MAX_ALIGNS, --max-aligns MAX_ALIGNS
                         maximum number of alignments to show
-  --pwa-width PWA_WIDTH, -aw PWA_WIDTH
+  -pw PWA_WIDTH, --pwa-width PWA_WIDTH
                         pairwise alignment output width
 ```
 

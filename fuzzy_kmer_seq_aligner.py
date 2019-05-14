@@ -15,48 +15,48 @@ from functions import build_fuzzy_map, pairwise_align
 
 
 parser = ArgumentParser()
-parser.add_argument('--fuzzy-seed', '-fs', type=str, required=True,
+parser.add_argument('-fs', '--fuzzy-seed', type=str, required=True,
                     help='fuzzy k-mer seed pattern')
-parser.add_argument('--query-seq', '-qs', type=str, required=True,
-                    help='query FASTA sequence file')
-parser.add_argument('--query-loc', '-ql', type=int, nargs=2,
-                    help='query sequence start-stop')
-parser.add_argument('--target-seq', '-ts', type=str, required=True,
-                    help='target FASTA sequence file')
-parser.add_argument('--target-loc', '-tl', type=int, nargs=2,
-                    help='target sequence start-stop')
-parser.add_argument('--seq-type', '-st', type=str, required=True,
+parser.add_argument('-st', '--seq-type', type=str, required=True,
                     choices=['dna', 'rna', 'protein'], help='sequence type')
-parser.add_argument('--sim-algo', '-sa', type=str, default='smith-waterman',
+parser.add_argument('-qs', '--query-seq', type=str, required=True,
+                    help='query FASTA sequence file')
+parser.add_argument('-ts', '--target-seq', type=str, required=True,
+                    help='target FASTA sequence file')
+parser.add_argument('-ql', '--query-loc', type=int, nargs=2,
+                    help='query sequence start stop')
+parser.add_argument('-tl', '--target-loc', type=int, nargs=2,
+                    help='target sequence start stop')
+parser.add_argument('-sa', '--sim-algo', type=str, default='smith-waterman',
                     choices=['levenshtein', 'hamming', 'smith-waterman'],
                     help='string similarity algorithm')
-parser.add_argument('--sim-cutoff', '-sc', type=float, default='0.5',
+parser.add_argument('-sc', '--sim-cutoff', type=float, default='0.5',
                     help='fuzzy membership similarity cutoff')
-parser.add_argument('--match-score', '-ms', type=float, default='2',
+parser.add_argument('-ms', '--match-score', type=float, default='2',
                     help='match score')
-parser.add_argument('--mismatch-score', '-ss', type=float, default='-3',
+parser.add_argument('-ss', '--mismatch-score', type=float, default='-3',
                     help='mismatch score')
-parser.add_argument('--open-gap-score', '-og', type=float,
+parser.add_argument('-og', '--open-gap-score', type=float,
                     help='open gap score')
-parser.add_argument('--extend-gap-score', '-eg', type=float,
+parser.add_argument('-eg', '--extend-gap-score', type=float,
                     help='extend gap score')
-parser.add_argument('--sub-matrix', '-sm', type=str, default='blosum62',
+parser.add_argument('-sm', '--sub-matrix', type=str, default='blosum62',
                     help='substitution matrix (any Biopython MatrixInfo '
                          'matrix name)')
-parser.add_argument('--max-kmer-gap', '-mg', type=int, default='30',
+parser.add_argument('-mg', '--max-kmer-gap', type=int, default='30',
                     help='maximum gap size when grouping kmers')
-parser.add_argument('--expect-thres', '-et', type=float, default='10',
+parser.add_argument('-et', '--expect-thres', type=float, default='10',
                     help='expect value threshold')
-parser.add_argument('--align-fmt', '-af', type=str, default='pairwise',
+parser.add_argument('-af', '--align-fmt', type=str, default='pairwise',
                     choices=['pairwise', 'tabular'],
                     help='alignment output format')
-parser.add_argument('--align-sort', '-as', type=str, default='e_value',
+parser.add_argument('-as', '--align-sort', type=str, default='e_value',
                     choices=['e_value', 'bit_score', 'pct_id', 'q_start',
                              's_start'],
                     help='alignment output sort')
-parser.add_argument('--max-aligns', '-ma', type=int, default='50',
+parser.add_argument('-ma', '--max-aligns', type=int, default='50',
                     help='maximum number of alignments to show')
-parser.add_argument('--pwa-width', '-aw', type=int, default='60',
+parser.add_argument('-pw', '--pwa-width', type=int, default='60',
                     help='pairwise alignment output width')
 args = parser.parse_args()
 

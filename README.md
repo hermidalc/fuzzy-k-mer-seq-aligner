@@ -87,25 +87,25 @@ Clone the Github repository:
 git clone git@github.com:hermidalc/fuzzy-kmer-seq-aligner.git
 ```
 
-Create and activate conda environment:
+Create and activate the conda environment:
 ```bash
+cd fuzzy-kmer-seq-aligner
 conda env create -f environment.yml
 conda activate fuzzy-kmer-seq-aligner
 ```
 
 Part of the fuzzy k-mer aligner program is written in Cython and this
-extension gets automatically compiled when you first run it. Under Mac
+extension gets automatically compiled when you first run it. Under
+Linux no additional dependencies need to be installed. Under Mac
 OSX you will need the Apple Clang Compiler tools for Cython to work.
 Download and install
 <a href="https://developer.apple.com/download/">
 Apple Xcode
 </a>
-to get the compiler tools.
-
-Under Windows you will need the Microsoft Visual C++ compiler tools for
-Cython to work. The version must be the same as the MSVC++ compiler
-used to build the Python executable you are using.  For Python 3.7
-download and install
+to get the compiler tools. Under Windows you will need the Microsoft
+Visual C++ compiler tools.  The version must be the same as the MSVC++
+compiler used to build the Python executable you are using. For Python
+3.7 download and install
 <a href="https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019" target="_blank">
 Build Tools for Visual Studio 2019
 </a>.

@@ -94,16 +94,15 @@ conda activate fuzzy-kmer-seq-aligner
 ```
 
 Part of the fuzzy k-mer aligner program is written in Cython and this
-extension gets automatically compiled when you first run it. 
-
-Under Mac OSX you need the Apple Clang Compiler tools for Cython to
-work.  Download 
+extension gets automatically compiled when you first run it. Under Mac
+OSX you will need the Apple Clang Compiler tools for Cython to work.
+Download 
 <a href="https://developer.apple.com/download/">
   Apple Xcode
 </a>
 to get the compiler tools.
 
-Under Windows you need the Microsoft Visual C++ compiler tools for
+Under Windows you will need the Microsoft Visual C++ compiler tools for
 Cython to work. The version must be the same as the MSVC++ compiler
 used to build the Python executable you are using.  For Python 3.7
 download and install

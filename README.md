@@ -96,8 +96,9 @@ Under Linux and Mac OSX install ``blast`` in your activated conda environment:
 ```bash
 conda install blast
 ```
-Under Windows you must downlooad and install BLAST+ manually from the NCBI
-FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST)
+Under Windows you must download and install the BLAST+ suite manually from the
+NCBI FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST) and
+ensure that the BLAST executables are in your ``%PATH%``.
 
 To run all examples simply type ``snakemake all`` and to clean up example
-files and results type ``snakemake clean``
+data and results type ``snakemake clean``

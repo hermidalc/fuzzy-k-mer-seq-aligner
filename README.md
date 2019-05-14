@@ -93,23 +93,30 @@ conda env create -f environment.yml
 conda activate fuzzy-kmer-seq-aligner
 ```
 
-In order to run all ``snakemake`` examples the BLAST+ suite must be installed.
-Under Linux and Mac OSX install ``blast`` in your activated conda environment:
-```bash
-conda install blast
-```
-
-Under Windows you must manually download and install two additional
-dependencies:
-
 Part of the fuzzy k-mer aligner program is written in Cython and this
-extension gets automatically compiled when you first run it. Under Windows you
-need the Microsoft Visual C++ compiler tools for Cython to work.  The version
-must be the same as the MSVC++ compiler used to build the Python executable
-you are using.  For Python 3.7 download and install
+extension gets automatically compiled when you first run it. 
+
+Under Mac OSX you need the Apple Clang Compiler tools for Cython to
+work.  Download 
+<a href="https://developer.apple.com/download/">
+  Apple Xcode
+</a>
+to get the compiler tools.
+
+Under Windows you need the Microsoft Visual C++ compiler tools for
+Cython to work. The version must be the same as the MSVC++ compiler
+used to build the Python executable you are using.  For Python 3.7
+download and install
 <a href="https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019" target="_blank">
 Build Tools for Visual Studio 2019
 </a>.
+
+In order to run all ``snakemake`` examples the BLAST+ suite must also be
+installed. Under Linux and Mac OSX install ``blast`` in your activated
+conda environment:
+```bash
+conda install blast
+```
 
 Conda has no BLAST+ suite package for Windows.  Download and install the
 BLAST+ suite from the NCBI FTP site (see

@@ -96,9 +96,9 @@ conda activate fuzzy-kmer-seq-aligner
 Part of the fuzzy k-mer aligner program is written in Cython and this
 extension gets automatically compiled when you first run it. Under Mac
 OSX you will need the Apple Clang Compiler tools for Cython to work.
-Download 
+Download and install
 <a href="https://developer.apple.com/download/">
-  Apple Xcode
+Apple Xcode
 </a>
 to get the compiler tools.
 

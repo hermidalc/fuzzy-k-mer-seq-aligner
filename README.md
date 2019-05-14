@@ -96,7 +96,7 @@ Under Linux and Mac OSX install ``blast`` in your activated conda environment:
 ```bash
 conda install blast
 ```
-Under Windows you must download and install the BLAST+ suite manually from the
+Under Windows you must manually download and install the BLAST+ suite from the
 NCBI FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST) and
 ensure that the BLAST executables are in your ``%PATH%``.
 

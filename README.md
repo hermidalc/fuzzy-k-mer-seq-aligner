@@ -68,9 +68,13 @@ optional arguments:
 ## Installation
 
 Install latest
-<a href="https://www.anaconda.com/distribution/" target="_blank">Anaconda</a>
+<a href="https://www.anaconda.com/distribution/" target="_blank">
+Anaconda
+</a>
 or
-<a href="https://docs.conda.io/en/latest/miniconda.html" target="_blank">Miniconda</a>
+<a href="https://docs.conda.io/en/latest/miniconda.html" target="_blank">
+Miniconda
+</a>
 for Python 3.x.
 
 Update ``conda`` to latest:
@@ -89,16 +93,30 @@ conda env create -f environment.yml
 conda activate fuzzy-kmer-seq-aligner
 ```
 
-## Running examples
-
 In order to run all ``snakemake`` examples the BLAST+ suite must be installed.
 Under Linux and Mac OSX install ``blast`` in your activated conda environment:
 ```bash
 conda install blast
 ```
-Under Windows you must manually download and install the BLAST+ suite from the
-NCBI FTP site (see ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST) and
-ensure that the BLAST executables are in your ``%PATH%``.
+
+Under Windows you must manually download and install two additional
+dependencies:
+
+Part of the fuzzy k-mer aligner program is written in Cython and this
+extension gets automatically compiled when you first run it. Under Windows you
+need the Microsoft Visual C++ compiler tools for Cython to work.  The version
+must be the same as the MSVC++ compiler used to build the Python executable
+you are using.  For Python 3.7 download and install
+<a href="https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019" target="_blank">
+Build Tools for Visual Studio 2019
+</a>.
+
+Conda has no BLAST+ suite package for Windows.  Download and install the
+BLAST+ suite from the NCBI FTP site (see
+ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST).  The installer should
+automatically add the BLAST executable directories to your ``%PATH%``.
+
+## Usage
 
 To run all examples simply type ``snakemake all`` and to clean up example
-data and results type ``snakemake clean``
+data and results type ``snakemake clean``.
